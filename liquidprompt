@@ -399,9 +399,6 @@ _lp_shorten_path()
 
     if [[ "$LP_ENABLE_SHORTEN_PATH" != 1 ]] ; then
         LP_PWD="$LP_PATH_DEFAULT"
-        if $_LP_SHELL_bash; then
-            [[ -n "$PROMPT_DIRTRIM" ]] && _lp_set_dirtrim
-        fi
         return
     fi
 
@@ -459,34 +456,6 @@ _lp_shorten_path()
         LP_PWD="${ret//\%/%%}"
     fi
 }
-
-# In bash shell, PROMPT_DIRTRIM is the number of directory to keep at the end
-# of the displayed path (if "\w" is present in the PS1 var).
-# liquidprompt can calculate this number under two condition, path shortening
-# must be disabled and PROMPT_DIRTRIM must be already set.
-_lp_set_dirtrim() {
-    local p="${PWD/$HOME/~}"
-    local -i max_len=${COLUMNS:-80}*$LP_PATH_LENGTH/100
-    local -i dt=0
-
-    if (( ${#p} > max_len )); then
-        local q="/${p##*/}"
-        local show="$q"
-        # +3 because of the ellipsis: "..."
-        while (( ${#show}+3 < max_len )); do
-            (( dt++ ))
-            p="${p%$q}"
-            q="/${p##*/}"
-            show="$q$show"
-        done
-        (( dt == 0 )) && dt=1
-    fi
-    PROMPT_DIRTRIM=$dt
-    # For debugging
-    # echo PROMPT_DIRTRIM=$PROMPT_DIRTRIM >&2
-}
-
-
 
 ################
 # Related jobs #
