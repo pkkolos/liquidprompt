@@ -91,26 +91,6 @@ fi
 # prompt function
 _LP_IFS="$IFS"
 
-
-###############
-# OS specific #
-###############
-
-# LP_OS detection, default to Linux
-case $(uname) in
-    FreeBSD)   LP_OS=FreeBSD ;;
-    DragonFly) LP_OS=FreeBSD ;;
-    OpenBSD)   LP_OS=OpenBSD ;;
-    Darwin)    LP_OS=Darwin  ;;
-    SunOS)     LP_OS=SunOS   ;;
-    *)         LP_OS=Linux   ;;
-esac
-
-# Extended regexp patterns for sed
-# GNU/BSD sed
-_LP_SED_EXTENDED=r
-[[ "$LP_OS" = Darwin ]] && _LP_SED_EXTENDED=E
-
 # Reset so all PWD dependent variables are computed after loading
 unset LP_OLD_PWD
 
@@ -294,19 +274,6 @@ else
 fi
 
 [[ "_$TERM" == _linux* ]] && LP_ENABLE_TITLE=0
-
-# update_terminal_cwd is a shell function available on MacOS X Lion that
-# will update an icon of the directory displayed in the title of the terminal
-# window.
-# See http://hints.macworld.com/article.php?story=20110722211753852
-if [[ "$TERM_PROGRAM" == Apple_Terminal ]] && command -v update_terminal_cwd >/dev/null; then
-    _LP_TERM_UPDATE_DIR=update_terminal_cwd
-    # Remove "update_terminal_cwd; " that has been add by Apple in /et/bashrc.
-    # See issue #196
-    PROMPT_COMMAND="${PROMPT_COMMAND//update_terminal_cwd; /}"
-else
-    _LP_TERM_UPDATE_DIR=:
-fi
 
 # Default value for LP_PERM when LP_ENABLE_PERM is 0
 LP_PERM=:   # without color
@@ -781,7 +748,7 @@ _LP_CLEAN_ESC="$(printf "s,%q|%q,,g" "$_LP_OPEN_ESC" "$_LP_CLOSE_ESC")"
 _lp_as_text()
 {
     # Remove colors from the computed prompt
-    echo -n "$1" | sed -$_LP_SED_EXTENDED "s/\x1B\[[0-9;]*[mK]//g;$_LP_CLEAN_ESC"
+    echo -n "$1" | sed -r "s/\x1B\[[0-9;]*[mK]//g;$_LP_CLEAN_ESC"
 }
 
 _lp_title()
@@ -884,9 +851,6 @@ _lp_set_prompt()
 
     # if change of working directory
     if [[ "$LP_OLD_PWD" != "LP:$PWD" ]]; then
-        # Update directory icon for MacOS X
-        $_LP_TERM_UPDATE_DIR
-
         LP_VCS=""
         LP_VCS_TYPE=""
         # LP_HOST is a global set at load time
