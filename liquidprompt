@@ -256,9 +256,6 @@ _lp_source_config()
     LP_COLOR_TIME=${LP_COLOR_TIME:-$BLUE}
     LP_COLOR_IN_MULTIPLEXER=${LP_COLOR_IN_MULTIPLEXER:-$BOLD_BLUE}
 
-    # Debugging flags
-    LP_DEBUG_TIME=${LP_DEBUG_TIME:-0}
-
     # Default config file may be the XDG standard ~/.config/liquidpromptrc,
     # but heirloom dotfile has priority.
 
@@ -1301,19 +1298,10 @@ prompt_on()
     fi
     if $_LP_SHELL_bash; then
         PROMPT_COMMAND=_lp_set_prompt
-        [[ "$LP_DEBUG_TIME" == 1 ]] && PROMPT_COMMAND="time $PROMPT_COMMAND"
     else # zsh
-        # That doesn't seem to work: no time output
-        #if [[ "$LP_DEBUG_TIME" == 1 ]]; then
-        #    function precmd {
-        #        local TIMEFMT='LiquidPrompt build time: %*E'
-        #        time _lp_set_prompt
-        #    }
-        #else
-            function precmd {
-                _lp_set_prompt
-            }
-        #fi
+        function precmd {
+            _lp_set_prompt
+        }
     fi
 
     # Keep in mind that LP has been sourced
