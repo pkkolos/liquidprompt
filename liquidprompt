@@ -71,11 +71,6 @@ if test -n "$BASH_VERSION" -a -n "$PS1" ; then
     _LP_MARK_SYMBOL='\$'
     _LP_FIRST_INDEX=0
     _LP_PWD_SYMBOL="\\w"
-    # Disable the DEBUG trap used by the RUNTIME feature
-    # (in case we are reloading LP in the same shell after disabling
-    # the feature in .liquidpromptrc)
-    # FIXME this doesn't seem to work :(
-    [[ -n "$LP_ENABLE_RUNTIME" ]] && trap - DEBUG
 elif test -n "$ZSH_VERSION" ; then
     _LP_SHELL_bash=false
     _LP_SHELL_zsh=true
@@ -226,7 +221,6 @@ _lp_source_config()
     LP_BATTERY_THRESHOLD=${LP_BATTERY_THRESHOLD:-75}
     LP_LOAD_THRESHOLD=${LP_LOAD_THRESHOLD:-60}
     LP_TEMP_THRESHOLD=${LP_TEMP_THRESHOLD:-60}
-    LP_RUNTIME_THRESHOLD=${LP_RUNTIME_THRESHOLD:-2}
     LP_PATH_LENGTH=${LP_PATH_LENGTH:-35}
     LP_PATH_KEEP=${LP_PATH_KEEP:-2}
     LP_PATH_DEFAULT="${LP_PATH_DEFAULT:-$_LP_PWD_SYMBOL}"
@@ -254,11 +248,6 @@ _lp_source_config()
     LP_ENABLE_HG=${LP_ENABLE_HG:-1}
     LP_ENABLE_BZR=${LP_ENABLE_BZR:-1}
     LP_ENABLE_TIME=${LP_ENABLE_TIME:-0}
-    if $_LP_SHELL_bash; then
-        LP_ENABLE_RUNTIME=${LP_ENABLE_RUNTIME:-1}
-    else
-        LP_ENABLE_RUNTIME=${LP_ENABLE_RUNTIME:-0}
-    fi
     LP_ENABLE_VIRTUALENV=${LP_ENABLE_VIRTUALENV:-1}
     LP_ENABLE_VCS_ROOT=${LP_ENABLE_VCS_ROOT:-0}
     LP_ENABLE_TITLE=${LP_ENABLE_TITLE:-0}
@@ -315,7 +304,6 @@ _lp_source_config()
     LP_COLOR_DISCHARGING_UNDER=${LP_COLOR_DISCHARGING_UNDER:-$RED}
     LP_COLOR_TIME=${LP_COLOR_TIME:-$BLUE}
     LP_COLOR_IN_MULTIPLEXER=${LP_COLOR_IN_MULTIPLEXER:-$BOLD_BLUE}
-    LP_COLOR_RUNTIME=${LP_COLOR_RUNTIME:-$YELLOW}
 
     LP_COLORMAP_0=${LP_COLORMAP_0:-""}
     LP_COLORMAP_1=${LP_COLORMAP_1:-$GREEN}
@@ -367,11 +355,6 @@ case "$LP_OS" in
     Darwin) [[ "$LP_ENABLE_BATT" = 1 ]] && { command -v pmset >/dev/null || LP_ENABLE_BATT=0 ; };;
     *)      [[ "$LP_ENABLE_BATT" = 1 ]] && { command -v acpi >/dev/null || LP_ENABLE_BATT=0 ; };;
 esac
-
-if [[ "$LP_ENABLE_RUNTIME" == 1 ]] && ! $_LP_SHELL_bash; then
-    echo Unfortunately, runtime printing for zsh is not yet supported. Turn LP_ENABLE_RUNTIME off in your config to hide this message.
-    LP_ENABLE_RUNTIME=0
-fi
 
 # If we are running in a terminal multiplexer, brackets are colored
 if [[ "$TERM" == screen* ]]; then
@@ -1301,47 +1284,6 @@ _lp_color_map() {
     fi
 }
 
-###########################
-# runtime of last command #
-###########################
-
-_LP_RUNTIME_LAST_SECONDS=$SECONDS
-
-_lp_runtime()
-{
-    [[ "$LP_ENABLE_RUNTIME" != 1 ]] && return
-    if [[ $_LP_RUNTIME_SECONDS -ge $LP_RUNTIME_THRESHOLD ]]
-    then
-        echo -ne "${LP_COLOR_RUNTIME}"
-        # display runtime seconds as days, hours, minutes, and seconds
-        [[ "$_LP_RUNTIME_SECONDS" -ge 86400 ]] && echo -ne $((_LP_RUNTIME_SECONDS / 86400))d
-        [[ "$_LP_RUNTIME_SECONDS" -ge 3600 ]] && echo -ne $((_LP_RUNTIME_SECONDS % 86400 / 3600))h
-        [[ "$_LP_RUNTIME_SECONDS" -ge 60 ]] && echo -ne $((_LP_RUNTIME_SECONDS % 3600 / 60))m
-        echo -ne $((_LP_RUNTIME_SECONDS % 60))s
-        echo -ne "${NO_COL}"
-    fi
-}
-
-_lp_reset_runtime()
-{
-    # Compute number of seconds since program was started
-    _LP_RUNTIME_SECONDS=$((SECONDS - _LP_RUNTIME_LAST_SECONDS))
-
-    # If no proper command was executed (i.e., someone pressed enter without entering a command),
-    # reset the runtime counter
-    [ "$_LP_RUNTIME_COMMAND_EXECUTED" != 1 ] && _LP_RUNTIME_LAST_SECONDS=$SECONDS && _LP_RUNTIME_SECONDS=0
-
-    # A proper command has been executed if the last command was not related to liquidprompt
-    [ "$BASH_COMMAND" = _lp_set_prompt ]
-    _LP_RUNTIME_COMMAND_EXECUTED=$?
-}
-
-if [ "$LP_ENABLE_RUNTIME" = 1 ]
-then
-    # _lp_reset_runtime gets called whenever bash executes a command
-    trap '_lp_reset_runtime' DEBUG
-fi
-
 ###############
 # System load #
 ###############
@@ -1586,8 +1528,6 @@ _lp_set_prompt()
         LP_VENV=
     fi
 
-    LP_RUNTIME=$(_lp_sl "$(_lp_runtime)")
-
     # if change of working directory
     if [[ "$LP_OLD_PWD" != "LP:$PWD" ]]; then
         # Update directory icon for MacOS X
@@ -1689,7 +1629,7 @@ _lp_set_prompt()
         PS1="${PS1}${LP_VCS}"
 
         # add return code and prompt mark
-        PS1="${PS1}${LP_RUNTIME}${LP_ERR}${LP_MARK_PREFIX}${LP_MARK}${LP_PS1_POSTFIX}"
+        PS1="${PS1}${LP_ERR}${LP_MARK_PREFIX}${LP_MARK}${LP_PS1_POSTFIX}"
 
         # "invisible" parts
         # Get the current prompt on the fly and make it a title
