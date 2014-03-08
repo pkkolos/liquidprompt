@@ -220,7 +220,6 @@ _lp_source_config()
     # Default values (globals)
     LP_BATTERY_THRESHOLD=${LP_BATTERY_THRESHOLD:-75}
     LP_LOAD_THRESHOLD=${LP_LOAD_THRESHOLD:-60}
-    LP_TEMP_THRESHOLD=${LP_TEMP_THRESHOLD:-60}
     LP_PATH_LENGTH=${LP_PATH_LENGTH:-35}
     LP_PATH_KEEP=${LP_PATH_KEEP:-2}
     LP_PATH_DEFAULT="${LP_PATH_DEFAULT:-$_LP_PWD_SYMBOL}"
@@ -238,7 +237,6 @@ _lp_source_config()
     LP_ENABLE_PERM=${LP_ENABLE_PERM:-1}
     LP_ENABLE_SHORTEN_PATH=${LP_ENABLE_SHORTEN_PATH:-1}
     LP_ENABLE_PROXY=${LP_ENABLE_PROXY:-1}
-    LP_ENABLE_TEMP=${LP_ENABLE_TEMP:-1}
     LP_ENABLE_JOBS=${LP_ENABLE_JOBS:-1}
     LP_ENABLE_LOAD=${LP_ENABLE_LOAD:-1}
     LP_ENABLE_BATT=${LP_ENABLE_BATT:-1}
@@ -259,7 +257,6 @@ _lp_source_config()
     LP_MARK_BATTERY="${LP_MARK_BATTERY:-"⌁"}"
     LP_MARK_ADAPTER="${LP_MARK_ADAPTER:-"⏚"}"
     LP_MARK_LOAD="${LP_MARK_LOAD:-"⌂"}"
-    LP_MARK_TEMP="${LP_MARK_TEMP:-"θ"}"
     LP_MARK_PROXY="${LP_MARK_PROXY:-"↥"}"
     LP_MARK_HG="${LP_MARK_HG:-"☿"}"
     LP_MARK_SVN="${LP_MARK_SVN:-"‡"}"
@@ -1320,55 +1317,6 @@ _lp_load_color()
     fi
 }
 
-######################
-# System temperature #
-######################
-
-_lp_temp_sensors()
-{
-    # Return the hottest system temperature we get through the sensors command
-    local i
-    for i in $(sensors |
-            sed -n -r "s/^(CPU|SYS|MB|Core|temp).*: *\+([0-9]*)\..°.*/\2/p"); do
-        [[ $i -gt $temperature ]] && temperature=$i
-    done
-}
-
-_lp_temp_acpi()
-{
-    local i
-    for i in $(acpi -t | sed 's/.* \([0-9]*\)\.[0-9]* degrees C$/\1/p'); do
-        [[ $i -gt $temperature ]] && temperature=$i
-    done
-}
-
-# Will set _LP_TEMP_FUNCTION so the temperature monitoring feature use an
-# available command. _LP_TEMP_FUNCTION should return only a numeric value
-if [[ "$LP_ENABLE_TEMP" = 1 ]]; then
-    if command -v acpi >/dev/null; then
-        _LP_TEMP_FUNCTION=_lp_temp_acpi
-    elif command -v sensors >/dev/null; then
-        _LP_TEMP_FUNCTION=_lp_temp_sensors
-    # elif command -v the_command_you_want_to_use; then
-    #   _LP_TEMP_FUNCTION=your_function
-    else
-        LP_ENABLE_TEMP=0
-    fi
-fi
-
-_lp_temperature() {
-    # Will display the numeric value as we got it through the _LP_TEMP_FUNCTION
-    # and colorize it through _lp_color_map.
-    [[ "$LP_ENABLE_TEMP" != 1 ]] && return
-
-    local temperature
-    temperature=0
-    $_LP_TEMP_FUNCTION
-    if [[ $temperature -ge $LP_TEMP_THRESHOLD ]]; then
-        echo -ne "${LP_MARK_TEMP}$(_lp_color_map $temperature 120)$temperature°${NO_COL}"
-    fi
-}
-
 ##########
 # DESIGN #
 ##########
@@ -1509,7 +1457,6 @@ _lp_set_prompt()
 
     # left of main prompt: space at right
     LP_JOBS="$(_lp_sr "$(_lp_jobcount_color)")"
-    LP_TEMP="$(_lp_sr "$(_lp_temperature)")"
     LP_LOAD="$(_lp_sr "$(_lp_load_color)")"
     LP_BATT="$(_lp_sr "$(_lp_battery_color)")"
     LP_TIME="$(_lp_sr "$(_lp_time)")"
@@ -1617,7 +1564,7 @@ _lp_set_prompt()
 
     if [[ -z "$LP_PS1" ]] ; then
         # add title escape time, jobs, load and battery
-        PS1="${LP_PS1_PREFIX}${LP_TIME}${LP_BATT}${LP_LOAD}${LP_TEMP}${LP_JOBS}"
+        PS1="${LP_PS1_PREFIX}${LP_TIME}${LP_BATT}${LP_LOAD}${LP_JOBS}"
         # add user, host and permissions colon
         PS1="${PS1}${LP_BRACKET_OPEN}${LP_USER}${LP_HOST}${LP_PERM}"
 
