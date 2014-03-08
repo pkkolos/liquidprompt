@@ -54,10 +54,6 @@ LP_ENABLE_VCS_ROOT=0
 # Recommended value is 1
 LP_ENABLE_GIT=1
 
-# Do you want to use the svn special features ?
-# Recommended value is 1
-LP_ENABLE_SVN=1
-
 # Do you want to use the mercurial special features ?
 # Recommended value is 1
 LP_ENABLE_HG=1

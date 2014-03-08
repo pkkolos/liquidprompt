@@ -203,7 +203,6 @@ _lp_source_config()
     LP_ENABLE_PROXY=${LP_ENABLE_PROXY:-1}
     LP_ENABLE_JOBS=${LP_ENABLE_JOBS:-1}
     LP_ENABLE_GIT=${LP_ENABLE_GIT:-1}
-    LP_ENABLE_SVN=${LP_ENABLE_SVN:-1}
     LP_ENABLE_HG=${LP_ENABLE_HG:-1}
     LP_ENABLE_TIME=${LP_ENABLE_TIME:-0}
     LP_ENABLE_VIRTUALENV=${LP_ENABLE_VIRTUALENV:-1}
@@ -280,7 +279,6 @@ unset _lp_source_config
 
 # Disable features if the tool is not installed
 [[ "$LP_ENABLE_GIT"  = 1 ]] && { command -v git  >/dev/null || LP_ENABLE_GIT=0  ; }
-[[ "$LP_ENABLE_SVN"  = 1 ]] && { command -v svn  >/dev/null || LP_ENABLE_SVN=0  ; }
 [[ "$LP_ENABLE_HG"   = 1 ]] && { command -v hg   >/dev/null || LP_ENABLE_HG=0   ; }
 
 # If we are running in a terminal multiplexer, brackets are colored
@@ -770,51 +768,6 @@ _lp_hg_branch_color()
     fi
 }
 
-# SUBVERSION #
-
-# Get the branch name of the current directory
-# For the first level of the repository, gives the repository name
-_lp_svn_branch()
-{
-    [[ "$LP_ENABLE_SVN" != 1 ]] && return
-    local root
-    local url
-    eval $(LANG=C LC_ALL=C svn info 2>/dev/null | sed -n 's/^URL: \(.*\)/url="\1"/p;s/^Repository Root: \(.*\)/root="\1"/p' )
-    [[ -z "$root" ]] && return
-
-    # Make url relative to root
-    url="${url:${#root}}"
-    if [[ "$url" == */trunk* ]] ; then
-        echo -n trunk
-    else
-        _lp_escape "$(expr "$url" : '.*/branches/\([^/]*\)' || expr "$url" : '/\([^/]*\)' || basename "$root")"
-    fi
-}
-
-# Set a color depending on the branch state:
-# - green if the repository is clean
-#   (use $LP_SVN_STATUS_OPTS to define what that means with
-#    the --depth option of 'svn status')
-# - red if there is changes to commit
-# Note that, due to subversion way of managing changes,
-# informations are only displayed for the CURRENT directory.
-_lp_svn_branch_color()
-{
-    [[ "$LP_ENABLE_SVN" != 1 ]] && return
-
-    local branch
-    branch="$(_lp_svn_branch)"
-    if [[ -n "$branch" ]] ; then
-        local changes
-        changes=$(( $(svn status $LP_SVN_STATUS_OPTIONS | grep -c -v "?") ))
-        if [[ $changes -eq 0 ]] ; then
-            echo "${LP_COLOR_UP}${branch}${NO_COL}"
-        else
-            echo "${LP_COLOR_CHANGES}${branch}${NO_COL}(${LP_COLOR_DIFF}$changes${NO_COL})" # changes to commit
-        fi
-    fi
-}
-
 ##########
 # DESIGN #
 ##########
@@ -848,7 +801,6 @@ _lp_smart_mark()
     git)      mark="$LP_MARK_GIT"             ;;
     git-svn)  mark="$LP_MARK_GIT$LP_MARK_SVN" ;;
     hg)       mark="$LP_MARK_HG"              ;;
-    svn)      mark="$LP_MARK_SVN"             ;;
     disabled) mark="$LP_MARK_DISABLED"        ;;
     *)
         if [[ -n "$LP_MARK_DEFAULT" ]]; then
@@ -964,13 +916,9 @@ _lp_set_prompt()
                 LP_VCS="$(_lp_hg_branch_color)"
                 LP_VCS_TYPE="hg"
                 if [[ -z "$LP_VCS" ]]; then
-                    LP_VCS="$(_lp_svn_branch_color)"
-                    LP_VCS_TYPE="svn"
-                    if [[ -z "$LP_VCS" ]]; then
-                        LP_VCS=""
-                        LP_VCS_TYPE=""
-                    fi # nothing
-                fi # svn
+                    LP_VCS=""
+                    LP_VCS_TYPE=""
+                fi # nothing
             fi # hg
 
         else # if this vcs rep is disabled
@@ -998,7 +946,6 @@ _lp_set_prompt()
             # git, git-svn
             git*)    LP_VCS="$(_lp_sl "$(_lp_git_branch_color)")";;
             hg)      LP_VCS="$(_lp_sl "$(_lp_hg_branch_color)")";;
-            svn)     LP_VCS="$(_lp_sl "$(_lp_svn_branch_color)")";;
             disabled)LP_VCS="";;
         esac
     fi
