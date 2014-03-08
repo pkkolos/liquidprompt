@@ -206,7 +206,6 @@ _lp_source_config()
     LP_ENABLE_SVN=${LP_ENABLE_SVN:-1}
     LP_ENABLE_FOSSIL=${LP_ENABLE_FOSSIL:-1}
     LP_ENABLE_HG=${LP_ENABLE_HG:-1}
-    LP_ENABLE_BZR=${LP_ENABLE_BZR:-1}
     LP_ENABLE_TIME=${LP_ENABLE_TIME:-0}
     LP_ENABLE_VIRTUALENV=${LP_ENABLE_VIRTUALENV:-1}
     LP_ENABLE_VCS_ROOT=${LP_ENABLE_VCS_ROOT:-0}
@@ -220,7 +219,6 @@ _lp_source_config()
     LP_MARK_SVN="${LP_MARK_SVN:-"‡"}"
     LP_MARK_GIT="${LP_MARK_GIT:-"±"}"
     LP_MARK_FOSSIL="${LP_MARK_FOSSIL:-"⌘"}"
-    LP_MARK_BZR="${LP_MARK_BZR:-"⚯"}"
     LP_MARK_DISABLED="${LP_MARK_DISABLED:-"⌀"}"
     LP_MARK_UNTRACKED="${LP_MARK_UNTRACKED:-"*"}"
     LP_MARK_STASH="${LP_MARK_STASH:-"+"}"
@@ -287,7 +285,6 @@ unset _lp_source_config
 [[ "$LP_ENABLE_SVN"  = 1 ]] && { command -v svn  >/dev/null || LP_ENABLE_SVN=0  ; }
 [[ "$LP_ENABLE_FOSSIL"  = 1 ]] && { command -v fossil  >/dev/null || LP_ENABLE_FOSSIL=0  ; }
 [[ "$LP_ENABLE_HG"   = 1 ]] && { command -v hg   >/dev/null || LP_ENABLE_HG=0   ; }
-[[ "$LP_ENABLE_BZR"  = 1 ]] && { command -v bzr > /dev/null || LP_ENABLE_BZR=0  ; }
 
 # If we are running in a terminal multiplexer, brackets are colored
 if [[ "$TERM" == screen* ]]; then
@@ -692,7 +689,7 @@ _lp_git_branch_color()
 }
 
 # Search upwards through a directory structure looking for a file/folder with
-# the given name.  Used to avoid invoking 'hg' and 'bzr'.
+# the given name.  Used to avoid invoking 'hg'.
 _lp_upwards_find()
 {
     local dir
@@ -935,65 +932,6 @@ _lp_fossil_branch_color()
     fi
 }
 
-# Bazaar #
-
-# Get the branch name of the current directory
-_lp_bzr_branch()
-{
-    [[ "$LP_ENABLE_BZR" != 1 ]] && return
-
-    # First do a simple search to avoid having to invoke bzr -- at least on my
-    # machine, the python startup causes a noticeable hitch when changing
-    # directories.
-    _lp_upwards_find .bzr || return
-
-    # We found an .bzr folder, so we need to invoke bzr and see if we're
-    # actually in a repository.
-
-    local branch
-    branch="$(bzr nick 2> /dev/null)"
-    [[ $? -ne 0 ]] && return
-    _lp_escape "$branch"
-}
-
-
-# Set a color depending on the branch state:
-# - green if the repository is up to date
-# - red if there is changes to commit
-# - TODO: yellow if there is some commits not pushed
-#
-# Add the number of pending commits and the impacted lines.
-_lp_bzr_branch_color()
-{
-    [[ "$LP_ENABLE_BZR" != 1 ]] && return
-
-    # First do a simple search to avoid having to invoke bzr -- at least on my
-    # machine, the python startup causes a noticeable hitch when changing
-    # directories.
-    _lp_upwards_find .bzr || return
-
-    # We found an .bzr folder, so we need to invoke bzr and see if we're
-    # actually in a repository.
-
-    local output
-    output="$(bzr version-info --check-clean --custom --template='{branch_nick} {revno} {clean}' 2> /dev/null)"
-    [[ $? -ne 0 ]] && return
-    local tuple=($output)
-    local branch=${tuple[_LP_FIRST_INDEX+0]}
-    local revno=${tuple[_LP_FIRST_INDEX+1]}
-    local clean=${tuple[_LP_FIRST_INDEX+2]}
-
-    if [[ -n "$branch" ]] ; then
-        if [[ "$clean" -eq 0 ]] ; then
-            ret="${LP_COLOR_CHANGES}${branch}${NO_COL}(${LP_COLOR_COMMITS}$revno${NO_COL})"
-        else
-            ret="${LP_COLOR_UP}${branch}${NO_COL}(${LP_COLOR_COMMITS}$revno${NO_COL})"
-        fi
-
-    fi
-    echo -ne "$ret"
-}
-
 ##########
 # DESIGN #
 ##########
@@ -1029,7 +967,6 @@ _lp_smart_mark()
     hg)       mark="$LP_MARK_HG"              ;;
     svn)      mark="$LP_MARK_SVN"             ;;
     fossil)   mark="$LP_MARK_FOSSIL"          ;;
-    bzr)      mark="$LP_MARK_BZR"             ;;
     disabled) mark="$LP_MARK_DISABLED"        ;;
     *)
         if [[ -n "$LP_MARK_DEFAULT" ]]; then
@@ -1151,13 +1088,9 @@ _lp_set_prompt()
                         LP_VCS="$(_lp_fossil_branch_color)"
                         LP_VCS_TYPE="fossil"
                         if [[ -z "$LP_VCS" ]]; then
-                            LP_VCS="$(_lp_bzr_branch_color)"
-                            LP_VCS_TYPE="bzr"
-                            if [[ -z "$LP_VCS" ]]; then
-                                LP_VCS=""
-                                LP_VCS_TYPE=""
-                            fi # nothing
-                        fi # bzr
+                            LP_VCS=""
+                            LP_VCS_TYPE=""
+                        fi # nothing
                     fi # fossil
                 fi # svn
             fi # hg
@@ -1189,7 +1122,6 @@ _lp_set_prompt()
             hg)      LP_VCS="$(_lp_sl "$(_lp_hg_branch_color)")";;
             svn)     LP_VCS="$(_lp_sl "$(_lp_svn_branch_color)")";;
             fossil)  LP_VCS="$(_lp_sl "$(_lp_fossil_branch_color)")";;
-            bzr)     LP_VCS="$(_lp_sl "$(_lp_bzr_branch_color)")";;
             disabled)LP_VCS="";;
         esac
     fi
