@@ -204,7 +204,6 @@ _lp_source_config()
     LP_ENABLE_JOBS=${LP_ENABLE_JOBS:-1}
     LP_ENABLE_GIT=${LP_ENABLE_GIT:-1}
     LP_ENABLE_SVN=${LP_ENABLE_SVN:-1}
-    LP_ENABLE_FOSSIL=${LP_ENABLE_FOSSIL:-1}
     LP_ENABLE_HG=${LP_ENABLE_HG:-1}
     LP_ENABLE_TIME=${LP_ENABLE_TIME:-0}
     LP_ENABLE_VIRTUALENV=${LP_ENABLE_VIRTUALENV:-1}
@@ -218,7 +217,6 @@ _lp_source_config()
     LP_MARK_HG="${LP_MARK_HG:-"☿"}"
     LP_MARK_SVN="${LP_MARK_SVN:-"‡"}"
     LP_MARK_GIT="${LP_MARK_GIT:-"±"}"
-    LP_MARK_FOSSIL="${LP_MARK_FOSSIL:-"⌘"}"
     LP_MARK_DISABLED="${LP_MARK_DISABLED:-"⌀"}"
     LP_MARK_UNTRACKED="${LP_MARK_UNTRACKED:-"*"}"
     LP_MARK_STASH="${LP_MARK_STASH:-"+"}"
@@ -283,7 +281,6 @@ unset _lp_source_config
 # Disable features if the tool is not installed
 [[ "$LP_ENABLE_GIT"  = 1 ]] && { command -v git  >/dev/null || LP_ENABLE_GIT=0  ; }
 [[ "$LP_ENABLE_SVN"  = 1 ]] && { command -v svn  >/dev/null || LP_ENABLE_SVN=0  ; }
-[[ "$LP_ENABLE_FOSSIL"  = 1 ]] && { command -v fossil  >/dev/null || LP_ENABLE_FOSSIL=0  ; }
 [[ "$LP_ENABLE_HG"   = 1 ]] && { command -v hg   >/dev/null || LP_ENABLE_HG=0   ; }
 
 # If we are running in a terminal multiplexer, brackets are colored
@@ -818,120 +815,6 @@ _lp_svn_branch_color()
     fi
 }
 
-
-# FOSSIL #
-
-# Get the tag name of the current directory
-_lp_fossil_branch()
-{
-    [[ "$LP_ENABLE_FOSSIL" != 1 ]] && return
-    local branch
-    branch="$(fossil status 2>/dev/null | grep tags: | cut -c17-)"
-    if [[ -n "$branch" ]] ; then
-        _lp_escape "$branch"
-    else
-        if fossil info &>/dev/null ; then
-            echo "no-tag"
-        fi
-    fi
-}
-
-# Set a color depending on the branch state:
-# - green if the repository is clean
-# - red if there is changes to commit
-# - yellow if the branch has no tag name
-#
-# Add the number of impacted files with a
-# + when files are ADDED or EDITED
-# - when files are DELETED
-_lp_fossil_branch_color()
-{
-    [[ "$LP_ENABLE_FOSSIL" != 1 ]] && return
-
-    local branch
-    branch="$(_lp_fossil_branch)"
-
-    if [[ -n "$branch" ]] ; then
-        local C2E # Modified files (added or edited)
-        local C2D # Deleted files
-        local C2A # Extras files
-        local C2AA # Added files
-        local PLUSLINE # Added lines
-        local MINUSLINE # Deleted lines
-        local ret
-        C2E=$(fossil changes | wc -l)
-        C2A=$(fossil extras | wc -l)
-        PLUSLINE=$(fossil diff | egrep -c '^\+[^+].+$')
-        MINUSLINE=$(fossil diff | egrep -c '^-[^-].+$')
-        ret=""
-
-        C2AA=$(fossil changes | grep -c "ADDED")
-        if [[ $C2AA -gt 0 ]] ; then
-            # We count the line "à la" git
-            local ADDFILE
-            local FILE
-            ADDFILE=$(fossil changes | grep ADDED | sed -e 's/\s\{2,\}/ /g' | cut -d" " -f2)
-            for FILE in $ADDFILE ; do
-                PLULI=$(wc -l < $FILE)
-                let PLUSLINE=$PLUSLINE+$PLULI
-            done
-        fi
-
-        if [[ $PLUSLINE -gt 0 ]] ; then
-            ret+="+$PLUSLINE"
-        fi
-
-        C2D=$(fossil changes | grep -c "DELETED")
-        if [[ $C2D -gt 0 ]] ; then
-            # We count the line "à la" git
-            local DELFILE
-            local FILE
-            DELFILE=$(fossil changes | grep DELETED | sed -e 's/\s\{2,\}/ /g' | cut -d" " -f2)
-            for FILE in $DELFILE ; do
-                MINLI=$(wc -l < $FILE)
-                let MINUSLINE=$MINUSLINE+$MINLI
-            done
-        fi
-
-        if [[ $MINUSLINE -gt 0 ]] ; then
-            if [[ "$ret" = "" ]] ; then
-                ret+="-$MINUSLINE"
-            else
-                ret+="/-$MINUSLINE"
-            fi
-        fi
-
-        if [[ "$C2E" -gt 0 ]] ; then
-            ret+=" in $C2E"
-        fi
-
-        if [[ "$C2A" -gt 0 ]] ; then
-            C2A="$LP_MARK_UNTRACKED"
-        else
-            C2A=""
-        fi
-
-        if [[ "$ret" != "" ]] ; then
-            ret="(${LP_COLOR_DIFF}$ret${NO_COL})"
-        fi
-
-
-        if [[ "$branch" = "no-tag" ]] ; then
-            # Warning, your branch has no tag name !
-            branch="${LP_COLOR_COMMITS}$branch${NO_COL}$ret${LP_COLOR_COMMITS}$C2A${NO_COL}"
-        else
-            if [[ "$C2E" -eq 0 && "$C2D" -eq 0 ]] ; then
-                # All is up-to-date
-                branch="${LP_COLOR_UP}$branch$C2A${NO_COL}"
-            else
-                # There're some changes to commit
-                branch="${LP_COLOR_CHANGES}$branch${NO_COL}$ret${LP_COLOR_CHANGES}$C2A${NO_COL}"
-            fi
-        fi
-        _lp_escape "$branch"
-    fi
-}
-
 ##########
 # DESIGN #
 ##########
@@ -966,7 +849,6 @@ _lp_smart_mark()
     git-svn)  mark="$LP_MARK_GIT$LP_MARK_SVN" ;;
     hg)       mark="$LP_MARK_HG"              ;;
     svn)      mark="$LP_MARK_SVN"             ;;
-    fossil)   mark="$LP_MARK_FOSSIL"          ;;
     disabled) mark="$LP_MARK_DISABLED"        ;;
     *)
         if [[ -n "$LP_MARK_DEFAULT" ]]; then
@@ -1085,13 +967,9 @@ _lp_set_prompt()
                     LP_VCS="$(_lp_svn_branch_color)"
                     LP_VCS_TYPE="svn"
                     if [[ -z "$LP_VCS" ]]; then
-                        LP_VCS="$(_lp_fossil_branch_color)"
-                        LP_VCS_TYPE="fossil"
-                        if [[ -z "$LP_VCS" ]]; then
-                            LP_VCS=""
-                            LP_VCS_TYPE=""
-                        fi # nothing
-                    fi # fossil
+                        LP_VCS=""
+                        LP_VCS_TYPE=""
+                    fi # nothing
                 fi # svn
             fi # hg
 
@@ -1121,7 +999,6 @@ _lp_set_prompt()
             git*)    LP_VCS="$(_lp_sl "$(_lp_git_branch_color)")";;
             hg)      LP_VCS="$(_lp_sl "$(_lp_hg_branch_color)")";;
             svn)     LP_VCS="$(_lp_sl "$(_lp_svn_branch_color)")";;
-            fossil)  LP_VCS="$(_lp_sl "$(_lp_fossil_branch_color)")";;
             disabled)LP_VCS="";;
         esac
     fi
