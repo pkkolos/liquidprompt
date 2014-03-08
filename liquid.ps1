@@ -1,4 +1,3 @@
-
 #######################################
 # LIQUID PROMPT DEFAULT TEMPLATE FILE #
 #######################################
@@ -16,8 +15,7 @@
 # LP_TIME current time
 # LP_PS1_PREFIX user-defined general-purpose prefix (default set a generic prompt as the window title)
 
-# Remember that most features come with their corresponding colors,
-# see the README.
+# Remember that most features come with their corresponding colors
 
 # add time and jobs
 LP_PS1="${LP_PS1_PREFIX}${LP_TIME}${LP_JOBS}"

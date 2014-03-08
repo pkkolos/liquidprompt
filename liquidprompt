@@ -3,7 +3,6 @@
 # An intelligent and non intrusive prompt for bash and zsh
 ################################################################################
 
-
 # Licensed under the AGPL version 3
 #
 # This program is free software: you can redistribute it and/or modify
@@ -47,40 +46,27 @@
 # Thomas Debesse    <thomas.debesse@gmail.com>    # Fix columns use.
 # Yann 'Ze' Richard <ze@nbox.org>                 # Do not fail on missing commands.
 
-# See the README.md file for a summary of features.
-
 # Issue #161: do not load if not an interactive shell
 test -z "$TERM" -o "x$TERM" = dumb && return
 
 # Check for recent enough version of bash.
-if test -n "$BASH_VERSION" -a -n "$PS1" ; then
-    bash=${BASH_VERSION%.*}; bmajor=${bash%.*}; bminor=${bash#*.}
-    if [[ $bmajor -lt 3 ]] || [[ $bmajor -eq 3 && $bminor -lt 2 ]]; then
-        unset bash bmajor bminor
-        return
-    fi
-    unset bash bmajor bminor
-
+if test -n "$BASH_VERSION"; then
     _LP_SHELL_bash=true
-    _LP_SHELL_zsh=false
     _LP_OPEN_ESC="\["
     _LP_CLOSE_ESC="\]"
     _LP_USER_SYMBOL="\u"
     _LP_HOST_SYMBOL="\h"
     _LP_TIME_SYMBOL="\t"
     _LP_MARK_SYMBOL='\$'
-    _LP_FIRST_INDEX=0
     _LP_PWD_SYMBOL="\\w"
-elif test -n "$ZSH_VERSION" ; then
+elif test -n "$ZSH_VERSION"; then
     _LP_SHELL_bash=false
-    _LP_SHELL_zsh=true
     _LP_OPEN_ESC="%{"
     _LP_CLOSE_ESC="%}"
     _LP_USER_SYMBOL="%n"
     _LP_HOST_SYMBOL="%m"
     _LP_TIME_SYMBOL="%*"
     _LP_MARK_SYMBOL='%(!.#.%%)'
-    _LP_FIRST_INDEX=1
     _LP_PWD_SYMBOL="%~"
 else
     echo "liquidprompt: shell not supported" >&2
@@ -109,22 +95,21 @@ unset LP_OLD_PWD
 # 3. Load the configuration
 _lp_source_config()
 {
-
-    # TermInfo feature detection
+    # terminfo feature detection
     local ti_sgr0="$( { tput sgr0 || tput me ; } 2>/dev/null )"
     local ti_bold="$( { tput bold || tput md ; } 2>/dev/null )"
     local ti_setaf
-    if tput setaf >/dev/null 2>&1 ; then
-        ti_setaf () { tput setaf "$1" ; }
-    elif tput AF >/dev/null 2>&1 ; then
+    if tput setaf >/dev/null 2>&1; then
+        ti_setaf() { tput setaf "$1" ; }
+    elif tput AF >/dev/null 2>&1; then
         # *BSD
-        ti_setaf () { tput AF "$1" ; }
-    elif tput AF 1 >/dev/null 2>&1 ; then
+        ti_setaf() { tput AF "$1" ; }
+    elif tput AF 1 >/dev/null 2>&1; then
         # OpenBSD
-        ti_setaf () { tput AF "$1" ; }
+        ti_setaf() { tput AF "$1" ; }
     else
         echo "liquidprompt: terminal $TERM not supported" >&2
-        ti_setaf () { : ; }
+        ti_setaf() { : ; }
     fi
 
     # Colors: variables are local so they will have a value only
@@ -163,20 +148,14 @@ _lp_source_config()
 
     unset ti_sgr0 ti_bold ti_setaf
 
-
     # Default values (globals)
     LP_PATH_LENGTH=${LP_PATH_LENGTH:-35}
     LP_PATH_KEEP=${LP_PATH_KEEP:-2}
-    LP_PATH_DEFAULT="${LP_PATH_DEFAULT:-$_LP_PWD_SYMBOL}"
     LP_HOSTNAME_ALWAYS=${LP_HOSTNAME_ALWAYS:-0}
     LP_USER_ALWAYS=${LP_USER_ALWAYS:-1}
     LP_PS1=${LP_PS1:-""}
     LP_PS1_PREFIX=${LP_PS1_PREFIX:-""}
     LP_PS1_POSTFIX=${LP_PS1_POSTFIX:-""}
-    LP_TITLE_OPEN=${LP_TITLE_OPEN:-"\e]0;"}
-    LP_TITLE_CLOSE=${LP_TITLE_CLOSE:-"\a"}
-    LP_SCREEN_TITLE_OPEN=${LP_SCREEN_TITLE_OPEN:-"\033k"}
-    LP_SCREEN_TITLE_CLOSE=${LP_SCREEN_TITLE_CLOSE:-"\033\134"}
 
     LP_ENABLE_PERM=${LP_ENABLE_PERM:-1}
     LP_ENABLE_SHORTEN_PATH=${LP_ENABLE_SHORTEN_PATH:-1}
@@ -191,7 +170,7 @@ _lp_source_config()
     LP_ENABLE_SCREEN_TITLE=${LP_ENABLE_SCREEN_TITLE:-0}
     # LP_DISABLED_VCS_PATH="${LP_DISABLED_VCS_PATH}"
 
-    # LP_MARK_DEFAULT="$LP_MARK_DEFAULT"
+    LP_MARK_DEFAULT="${LP_MARK_DEFAULT:-"$_LP_MARK_SYMBOL"}"
     LP_MARK_PROXY="${LP_MARK_PROXY:-"↥"}"
     LP_MARK_HG="${LP_MARK_HG:-"☿"}"
     LP_MARK_SVN="${LP_MARK_SVN:-"‡"}"
@@ -202,7 +181,7 @@ _lp_source_config()
     LP_MARK_BRACKET_OPEN="${LP_MARK_BRACKET_OPEN:-"["}"
     LP_MARK_BRACKET_CLOSE="${LP_MARK_BRACKET_CLOSE:-"]"}"
     LP_MARK_SHORTEN_PATH="${LP_MARK_SHORTEN_PATH:-" … "}"
-    # LP_MARK_PREFIX="$LP_MARK_PREFIX"
+    LP_MARK_PREFIX="${LP_MARK_PREFIX:-""}"
 
     LP_COLOR_PATH=${LP_COLOR_PATH:-$BOLD}
     LP_COLOR_PATH_ROOT=${LP_COLOR_PATH_ROOT:-$BOLD_YELLOW}
@@ -258,26 +237,27 @@ _lp_source_config
 unset _lp_source_config
 
 # Disable features if the tool is not installed
-[[ "$LP_ENABLE_GIT"  = 1 ]] && { command -v git  >/dev/null || LP_ENABLE_GIT=0  ; }
-[[ "$LP_ENABLE_HG"   = 1 ]] && { command -v hg   >/dev/null || LP_ENABLE_HG=0   ; }
+[[ "$LP_ENABLE_GIT" = 1 ]] && { command -v git >/dev/null || LP_ENABLE_GIT=0 ; }
+[[ "$LP_ENABLE_HG"  = 1 ]] && { command -v hg  >/dev/null || LP_ENABLE_HG=0  ; }
 
 # If we are running in a terminal multiplexer, brackets are colored
 if [[ "$TERM" == screen* ]]; then
     LP_BRACKET_OPEN="${LP_COLOR_IN_MULTIPLEXER}${LP_MARK_BRACKET_OPEN}${NO_COL}"
     LP_BRACKET_CLOSE="${LP_COLOR_IN_MULTIPLEXER}${LP_MARK_BRACKET_CLOSE}${NO_COL}"
     (( LP_ENABLE_TITLE = LP_ENABLE_TITLE && LP_ENABLE_SCREEN_TITLE ))
-    LP_TITLE_OPEN="$LP_SCREEN_TITLE_OPEN"
-    LP_TITLE_CLOSE="$LP_SCREEN_TITLE_CLOSE"
+    LP_TITLE_OPEN="\033k"
+    LP_TITLE_CLOSE="\033\134"
+elif [[ "$TERM" == linux* ]]; then
+    LP_ENABLE_TITLE=0
 else
     LP_BRACKET_OPEN="${LP_MARK_BRACKET_OPEN}"
     LP_BRACKET_CLOSE="${LP_MARK_BRACKET_CLOSE}"
+    LP_TITLE_OPEN="\e]0;"
+    LP_TITLE_CLOSE="\a"
 fi
-
-[[ "_$TERM" == _linux* ]] && LP_ENABLE_TITLE=0
 
 # Default value for LP_PERM when LP_ENABLE_PERM is 0
 LP_PERM=:   # without color
-
 
 # Escape the given strings
 # Must be used for all strings that may comes from remote sources,
@@ -287,18 +267,17 @@ _lp_escape()
     printf "%q" "$*"
 }
 
-
 ###############
 # Who are we? #
 ###############
 
 # Yellow for root, bold if the user is not the login one, else no color.
-if [[ "$EUID" -ne "0" ]] ; then  # if user is not root
+if [[ "$EUID" -ne "0" ]]; then  # if user is not root
     # if user is not login user
     if [[ ${USER} != "$(logname 2>/dev/null || echo $LOGNAME)" ]]; then
         LP_USER="${LP_COLOR_USER_ALT}${_LP_USER_SYMBOL}${NO_COL}"
     else
-        if [[ "${LP_USER_ALWAYS}" -ne "0" ]] ; then
+        if [[ "${LP_USER_ALWAYS}" -ne "0" ]]; then
             LP_USER="${LP_COLOR_USER_LOGGED}${_LP_USER_SYMBOL}${NO_COL}"
         else
             LP_USER=""
@@ -315,22 +294,21 @@ else # root!
     fi
 fi
 
-
 #################
 # Where are we? #
 #################
 
 _lp_connection()
 {
-    if [[ -n "$SSH_CLIENT$SSH2_CLIENT$SSH_TTY" ]] ; then
+    if [[ -n "$SSH_CLIENT$SSH2_CLIENT$SSH_TTY" ]]; then
         echo ssh
     else
         # TODO check on *BSD
         local sess_src="$(who am i | sed -n 's/.*(\(.*\))/\1/p')"
         local sess_parent="$(ps -o comm= -p $PPID 2> /dev/null)"
-        if [[ -z "$sess_src" || "$sess_src" = ":"* ]] ; then
+        if [[ -z "$sess_src" || "$sess_src" = ":"* ]]; then
             echo lcl  # Local
-        elif [[ "$sess_parent" = "su" || "$sess_parent" = "sudo" ]] ; then
+        elif [[ "$sess_parent" = "su" || "$sess_parent" = "sudo" ]]; then
             echo su   # Remote su/sudo
         else
             echo tel  # Telnet
@@ -340,13 +318,13 @@ _lp_connection()
 
 # Put the hostname if not locally connected
 # color it in cyan within SSH, and a warning red if within telnet
-# else diplay the host without color
+# else display the host without color
 # The connection is not expected to change from inside the shell, so we
 # build this just once
 LP_HOST=""
 _chroot()
 {
-    if [[ -r /etc/debian_chroot ]] ; then
+    if [[ -r /etc/debian_chroot ]]; then
         local debchroot
         debchroot="$(< /etc/debian_chroot)"
         echo "(${debchroot})"
@@ -356,36 +334,36 @@ LP_HOST="$(_chroot)"
 unset _chroot
 
 # If we are connected with a X11 support
-if [[ -n "$DISPLAY" ]] ; then
+if [[ -n "$DISPLAY" ]]; then
     LP_HOST="${LP_COLOR_X11_ON}${LP_HOST}@${NO_COL}"
 else
     LP_HOST="${LP_COLOR_X11_OFF}${LP_HOST}@${NO_COL}"
 fi
 
 case "$(_lp_connection)" in
-lcl)
-    if [[ "${LP_HOSTNAME_ALWAYS}" -eq "0" ]] ; then
-        # FIXME do we want to display the chroot if local?
-        LP_HOST="" # no hostname if local
-    else
-        LP_HOST="${LP_HOST}${LP_COLOR_HOST}${_LP_HOST_SYMBOL}${NO_COL}"
-    fi
-    ;;
-ssh)
-    LP_HOST="${LP_HOST}${LP_COLOR_SSH}${_LP_HOST_SYMBOL}${NO_COL}"
-    ;;
-su)
-    LP_HOST="${LP_HOST}${LP_COLOR_SU}${_LP_HOST_SYMBOL}${NO_COL}"
-    ;;
-tel)
-    LP_HOST="${LP_HOST}${LP_COLOR_TELNET}${_LP_HOST_SYMBOL}${NO_COL}"
-    ;;
-*)
-    LP_HOST="${LP_HOST}${_LP_HOST_SYMBOL}" # defaults to no color
-    ;;
+    lcl)
+        if [[ "${LP_HOSTNAME_ALWAYS}" -eq "0" ]]; then
+            # FIXME do we want to display the chroot if local?
+            LP_HOST="" # no hostname if local
+        else
+            LP_HOST="${LP_HOST}${LP_COLOR_HOST}${_LP_HOST_SYMBOL}${NO_COL}"
+        fi
+        ;;
+    ssh)
+        LP_HOST="${LP_HOST}${LP_COLOR_SSH}${_LP_HOST_SYMBOL}${NO_COL}"
+        ;;
+    su)
+        LP_HOST="${LP_HOST}${LP_COLOR_SU}${_LP_HOST_SYMBOL}${NO_COL}"
+        ;;
+    tel)
+        LP_HOST="${LP_HOST}${LP_COLOR_TELNET}${_LP_HOST_SYMBOL}${NO_COL}"
+        ;;
+    *)
+        LP_HOST="${LP_HOST}${_LP_HOST_SYMBOL}" # defaults to no color
+        ;;
 esac
 
-# Useless now, so undefine
+# Useless now, so unset
 unset _lp_connection
 
 
@@ -396,9 +374,8 @@ unset _lp_connection
 # * show at least LP_PATH_KEEP leading dirs and current directory
 _lp_shorten_path()
 {
-
-    if [[ "$LP_ENABLE_SHORTEN_PATH" != 1 ]] ; then
-        LP_PWD="$LP_PATH_DEFAULT"
+    if [[ "$LP_ENABLE_SHORTEN_PATH" != 1 ]]; then
+        LP_PWD="$_LP_PWD_SYMBOL"
         return
     fi
 
@@ -410,7 +387,7 @@ _lp_shorten_path()
 
     if [[ ${LP_PATH_KEEP} == -1 ]]; then
         # only show the current directory, excluding any parent dirs
-        ret="${p##*/}" # discard everything upto and including the last slash
+        ret="${p##*/}" # discard everything up to and including the last slash
         [[ "${ret}" == "" ]] && ret="/" # if in root directory
     elif (( ${#p} <= ${max_len} )); then
         ret="${p}"
@@ -479,24 +456,22 @@ _lp_jobcount_color()
     local m_run="&"
     local ret=""
 
-    if [[ $detached != "0" ]] ; then
+    if [[ $detached != "0" ]]; then
         ret="${ret}${LP_COLOR_JOB_D}${detached}${m_detached}${NO_COL}"
     fi
 
-    if [[ $running != "0" ]] ; then
-        if [[ $ret != "" ]] ; then ret="${ret}/"; fi
+    if [[ $running != "0" ]]; then
+        [[ $ret != "" ]] && ret="${ret}/"
         ret="${ret}${LP_COLOR_JOB_R}${running}${m_run}${NO_COL}"
     fi
 
-    if [[ $stopped != "0" ]] ; then
-        if [[ $ret != "" ]] ; then ret="${ret}/"; fi
+    if [[ $stopped != "0" ]]; then
+        [[ $ret != "" ]] && ret="${ret}/"
         ret="${ret}${LP_COLOR_JOB_Z}${stopped}${m_stop}${NO_COL}"
     fi
 
     echo -ne "$ret"
 }
-
-
 
 ######################
 # VCS branch display #
@@ -546,7 +521,7 @@ _lp_git_branch_color()
 
     local branch
     branch="$(_lp_git_branch)"
-    if [[ -n "$branch" ]] ; then
+    if [[ -n "$branch" ]]; then
 
         local end
         end="$NO_COL"
@@ -563,35 +538,32 @@ _lp_git_branch_color()
 
         local -i has_commit
         has_commit=0
-        if [[ -n "$remote" ]] ; then
+        if [[ -n "$remote" ]]; then
             local remote_branch
             remote_branch="$(\git config --get branch.${branch}.merge)"
-            if [[ -n "$remote_branch" ]] ; then
+            if [[ -n "$remote_branch" ]]; then
                 has_commit="$(\git rev-list --no-merges --count ${remote_branch/refs\/heads/refs\/remotes\/$remote}..HEAD 2>/dev/null)"
-                if [[ -z "$has_commit" ]] ; then
-                    has_commit=0
-                fi
+                [[ -z "$has_commit" ]] && has_commit=0
             fi
         fi
 
         local ret
         local shortstat # only to check for uncommitted changes
         shortstat="$(LC_ALL=C \git diff --shortstat HEAD 2>/dev/null)"
-
-        if [[ -n "$shortstat" ]] ; then
+        if [[ -n "$shortstat" ]]; then
             local u_stat # shorstat of *unstaged* changes
             u_stat="$(LC_ALL=C \git diff --shortstat 2>/dev/null)"
             u_stat=${u_stat/*changed, /} # removing "n file(s) changed"
 
             local i_lines # inserted lines
-            if [[ "$u_stat" = *insertion* ]] ; then
+            if [[ "$u_stat" = *insertion* ]]; then
                 i_lines=${u_stat/ inser*}
             else
                 i_lines=0
             fi
 
             local d_lines # deleted lines
-            if [[ "$u_stat" = *deletion* ]] ; then
+            if [[ "$u_stat" = *deletion* ]]; then
                 d_lines=${u_stat/*\(+\), }
                 d_lines=${d_lines/ del*/}
             else
@@ -601,14 +573,14 @@ _lp_git_branch_color()
             local has_lines
             has_lines="+$i_lines/-$d_lines"
 
-            if [[ "$has_commit" -gt "0" ]] ; then
+            if [[ "$has_commit" -gt "0" ]]; then
                 # Changes to commit and commits to push
                 ret="${LP_COLOR_CHANGES}${branch}${NO_COL}(${LP_COLOR_DIFF}$has_lines${NO_COL},${LP_COLOR_COMMITS}$has_commit${NO_COL})"
             else
                 ret="${LP_COLOR_CHANGES}${branch}${NO_COL}(${LP_COLOR_DIFF}$has_lines${NO_COL})" # changes to commit
             fi
         else
-            if [[ "$has_commit" -gt "0" ]] ; then
+            if [[ "$has_commit" -gt "0" ]]; then
                 # some commit(s) to push
                 ret="${LP_COLOR_COMMITS}${branch}${NO_COL}(${LP_COLOR_COMMITS}$has_commit${NO_COL})"
             else
@@ -664,11 +636,11 @@ _lp_hg_branch_color()
     local branch
     local ret
     branch="$(_lp_hg_branch)"
-    if [[ -n "$branch" ]] ; then
+    if [[ -n "$branch" ]]; then
 
         local has_untracked
         has_untracked=
-        if hg status -u 2>/dev/null | grep -q '^\?' >/dev/null ; then
+        if hg status -u 2>/dev/null | grep -q '^\?' >/dev/null; then
             has_untracked="$LP_COLOR_CHANGES$LP_MARK_UNTRACKED"
         fi
 
@@ -681,8 +653,8 @@ _lp_hg_branch_color()
         commits=0
 
         # Check if there is some uncommitted stuff
-        if [[ -z "$(hg status --quiet -n)" ]] ; then
-            if (( commits > 0 )) ; then
+        if [[ -z "$(hg status --quiet -n)" ]]; then
+            if (( commits > 0 )); then
                 # some commit(s) to push
                 ret="${LP_COLOR_COMMITS}${branch}${NO_COL}(${LP_COLOR_COMMITS}$commits${NO_COL})${has_untracked}${NO_COL}"
             else
@@ -693,7 +665,7 @@ _lp_hg_branch_color()
             local has_lines
             # Parse the last line of the diffstat-style output
             has_lines="$(hg diff --stat 2>/dev/null | sed -n '$ s!^.*, \([0-9]*\) .*, \([0-9]*\).*$!+\1/-\2!p')"
-            if (( commits > 0 )) ; then
+            if (( commits > 0 )); then
                 # Changes to commit and commits to push
                 ret="${LP_COLOR_CHANGES}${branch}${NO_COL}(${LP_COLOR_DIFF}$has_lines${NO_COL},${LP_COLOR_COMMITS}$commits${NO_COL})${has_untracked}${NO_COL}"
             else
@@ -707,7 +679,6 @@ _lp_hg_branch_color()
 ##########
 # DESIGN #
 ##########
-
 
 # Sed expression using extended regexp to remove shell codes around terminal
 # escape sequences
@@ -734,17 +705,11 @@ _lp_smart_mark()
 {
     local mark
     case "$LP_VCS_TYPE" in
-    git)      mark="$LP_MARK_GIT"             ;;
-    git-svn)  mark="$LP_MARK_GIT$LP_MARK_SVN" ;;
-    hg)       mark="$LP_MARK_HG"              ;;
-    disabled) mark="$LP_MARK_DISABLED"        ;;
-    *)
-        if [[ -n "$LP_MARK_DEFAULT" ]]; then
-            mark="$LP_MARK_DEFAULT"
-        else
-            mark="$_LP_MARK_SYMBOL"
-        fi
-        ;;
+        git     ) mark="$LP_MARK_GIT"             ;;
+        git-svn ) mark="$LP_MARK_GIT$LP_MARK_SVN" ;;
+        hg      ) mark="$LP_MARK_HG"              ;;
+        disabled) mark="$LP_MARK_DISABLED"        ;;
+        *       ) mark="$LP_MARK_DEFAULT"         ;;
     esac
     echo -ne "${LP_COLOR_MARK}${mark}${NO_COL}"
 }
@@ -781,7 +746,6 @@ _lp_time()
 # Construct the prompt #
 ########################
 
-
 _lp_set_prompt()
 {
     # Display the return value of the last command, if different from zero
@@ -805,25 +769,21 @@ _lp_set_prompt()
     LP_TIME="$(_lp_sr "$(_lp_time)")"
 
     # in main prompt: no space
-    if [[ "$LP_ENABLE_PROXY,$http_proxy" = 1,?* ]] ; then
+    if [[ "$LP_ENABLE_PROXY,$http_proxy" = 1,?* ]]; then
         LP_PROXY="$LP_COLOR_PROXY$LP_MARK_PROXY$NO_COL"
     else
-        LP_PROXY=
+        LP_PROXY=""
     fi
 
-    # Display the current Python virtual environnement, if available
-    if [[ "$LP_ENABLE_VIRTUALENV,$VIRTUAL_ENV" = 1,?* ]] ; then
+    # Display the current Python virtual environment, if available
+    if [[ "$LP_ENABLE_VIRTUALENV,$VIRTUAL_ENV" = 1,?* ]]; then
         LP_VENV=" [${LP_COLOR_VIRTUALENV}${VIRTUAL_ENV##*/}${NO_COL}]"
     else
-        LP_VENV=
+        LP_VENV=""
     fi
 
     # if change of working directory
     if [[ "$LP_OLD_PWD" != "LP:$PWD" ]]; then
-        LP_VCS=""
-        LP_VCS_TYPE=""
-        # LP_HOST is a global set at load time
-
         # LP_PERM: shows a ":"
         # - colored in green if user has write permission on the current dir
         # - colored in red if not
@@ -859,7 +819,7 @@ _lp_set_prompt()
             LP_VCS_TYPE="disabled"
         fi
 
-        if [[ -z "$LP_VCS_TYPE" ]] ; then
+        if [[ -z "$LP_VCS_TYPE" ]]; then
             LP_VCS=""
         else
             LP_VCS="$(_lp_sl "${LP_VCS}")"
@@ -877,9 +837,9 @@ _lp_set_prompt()
     elif [[ -n "$LP_VCS_TYPE" ]]; then # we are still in a VCS dir
         case "$LP_VCS_TYPE" in
             # git, git-svn
-            git*)    LP_VCS="$(_lp_sl "$(_lp_git_branch_color)")";;
-            hg)      LP_VCS="$(_lp_sl "$(_lp_hg_branch_color)")";;
-            disabled)LP_VCS="";;
+            git*    ) LP_VCS="$(_lp_sl "$(_lp_git_branch_color)")" ;;
+            hg      ) LP_VCS="$(_lp_sl "$(_lp_hg_branch_color)")"  ;;
+            disabled) LP_VCS=""                                    ;;
         esac
     fi
 
@@ -887,7 +847,7 @@ _lp_set_prompt()
         source "$LP_PS1_FILE"
     fi
 
-    if [[ -z "$LP_PS1" ]] ; then
+    if [[ -z "$LP_PS1" ]]; then
         # add title escape time, and jobs
         PS1="${LP_PS1_PREFIX}${LP_TIME}${LP_JOBS}"
         # add user, host and permissions colon
@@ -909,11 +869,6 @@ _lp_set_prompt()
 
         # Insert it in the prompt
         PS1="${LP_TITLE}${PS1}"
-
-        # Glue the bash prompt always go to the first column.
-        # Avoid glitches after interrupting a command with Ctrl-C
-        # Does not seem to be necessary anymore?
-        #PS1="\[\033[G\]${PS1}${NO_COL}"
     else
         PS1=$LP_PS1
     fi
@@ -928,7 +883,7 @@ prompt_tag()
 prompt_on()
 {
     # if liquidprompt has not been already set
-    if [[ -z "$LP_LIQUIDPROMPT" ]] ; then
+    if [[ -z "$LP_LIQUIDPROMPT" ]]; then
         LP_OLD_PS1="$PS1"
         if $_LP_SHELL_bash; then
             LP_OLD_PROMPT_COMMAND="$PROMPT_COMMAND"
@@ -939,9 +894,7 @@ prompt_on()
     if $_LP_SHELL_bash; then
         PROMPT_COMMAND=_lp_set_prompt
     else # zsh
-        function precmd {
-            _lp_set_prompt
-        }
+        precmd() { _lp_set_prompt ; }
     fi
 
     # Keep in mind that LP has been sourced
