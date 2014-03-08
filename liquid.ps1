@@ -4,7 +4,6 @@
 #######################################
 
 # Available features:
-# LP_BATT battery
 # LP_LOAD load
 # LP_JOBS screen sessions/running jobs/suspended jobs
 # LP_USER user
@@ -21,8 +20,8 @@
 # Remember that most features come with their corresponding colors,
 # see the README.
 
-# add time, jobs, load and battery
-LP_PS1="${LP_PS1_PREFIX}${LP_TIME}${LP_BATT}${LP_LOAD}${LP_JOBS}"
+# add time, jobs, and load
+LP_PS1="${LP_PS1_PREFIX}${LP_TIME}${LP_LOAD}${LP_JOBS}"
 # add user, host and permissions colon
 LP_PS1="${LP_PS1}[${LP_USER}${LP_HOST}${LP_PERM}"
 
