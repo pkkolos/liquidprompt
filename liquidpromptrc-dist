@@ -12,10 +12,6 @@
 # BEHAVIOUR #
 #############
 
-# Minimal value after which the load average is displayed
-# Recommended value is 60
-LP_LOAD_THRESHOLD=60
-
 # The maximum percentage of the screen width used to display the path
 # Recommended value is 35
 LP_PATH_LENGTH=35
@@ -34,11 +30,6 @@ LP_HOSTNAME_ALWAYS=0
 # set to 0 if you want to hide the logged user (it will always display different users)
 LP_USER_ALWAYS=1
 
-# Do you want to display the percentage of load along with its
-# corresponding mark? Set to 0 to only print the colored mark.
-# Defaults to 1 (display percentage)
-LP_PERCENTS_ALWAYS=1
-
 # Do you want to use the permissions feature ?
 # Recommended value is 1
 LP_ENABLE_PERM=1
@@ -54,10 +45,6 @@ LP_ENABLE_PROXY=1
 # Do you want to use the jobs feature ?
 # Recommended value is 1
 LP_ENABLE_JOBS=1
-
-# Do you want to use the load feature ?
-# Recommended value is 1
-LP_ENABLE_LOAD=1
 
 # Do you want to use vcs features with root account
 # Recommended value is 0
