@@ -190,6 +190,7 @@ _lp_source_config()
     LP_ENABLE_JOBS=${LP_ENABLE_JOBS:-1}
     LP_ENABLE_GIT=${LP_ENABLE_GIT:-1}
     LP_ENABLE_HG=${LP_ENABLE_HG:-1}
+    LP_ENABLE_VCSH=${LP_ENABLE_VCSH:-1}
     LP_ENABLE_VCS_ROOT=${LP_ENABLE_VCS_ROOT:-0}
     LP_ENABLE_PROXY=${LP_ENABLE_PROXY:-1}
     LP_ENABLE_VIRTUALENV=${LP_ENABLE_VIRTUALENV:-1}
@@ -209,6 +210,7 @@ _lp_source_config()
     LP_MARK_GIT="${LP_MARK_GIT:-"±"}"
     LP_MARK_HG="${LP_MARK_HG:-"☿"}"
     LP_MARK_SVN="${LP_MARK_SVN:-"‡"}"
+    LP_MARK_VCSH="${LP_MARK_VCSH:-"|"}"
     LP_MARK_DISABLED="${LP_MARK_DISABLED:-"⌀"}"
     LP_MARK_UNTRACKED="${LP_MARK_UNTRACKED:-"*"}"
     LP_MARK_STASH="${LP_MARK_STASH:-"+"}"
@@ -706,11 +708,12 @@ _lp_smart_mark()
 {
     local mark
     case "$LP_VCS_TYPE" in
-        git     ) mark="$LP_MARK_GIT"             ;;
-        git-svn ) mark="$LP_MARK_GIT$LP_MARK_SVN" ;;
-        hg      ) mark="$LP_MARK_HG"              ;;
-        disabled) mark="$LP_MARK_DISABLED"        ;;
-        *       ) mark="$LP_MARK_DEFAULT"         ;;
+        git     ) mark="$LP_MARK_GIT"                           ;;
+        git-svn ) mark="$LP_MARK_GIT$LP_MARK_SVN"               ;;
+        git-vcsh) mark="$LP_MARK_VCSH$LP_MARK_GIT$LP_MARK_VCSH" ;;
+        hg      ) mark="$LP_MARK_HG"                            ;;
+        disabled) mark="$LP_MARK_DISABLED"                      ;;
+        *       ) mark="$LP_MARK_DEFAULT"                       ;;
     esac
     echo -ne "${LP_COLOR_MARK}${mark}${NO_COL}"
 }
@@ -806,6 +809,10 @@ _lp_set_prompt()
             LP_VCS="$(_lp_git_branch_color)"
             LP_VCS_TYPE="git"
             if [[ -n "$LP_VCS" ]]; then
+                # If this is a vcsh repository
+                if [[ -n "$VCSH_DIRECTORY" ]]; then
+                    LP_VCS_TYPE="git-vcsh"
+                fi
                 # If this is a git-svn repository
                 if [[ -d "$(\git rev-parse --git-dir 2>/dev/null)/svn" ]]; then
                     LP_VCS_TYPE="git-svn"
