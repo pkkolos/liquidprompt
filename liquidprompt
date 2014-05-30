@@ -47,7 +47,7 @@
 # Yann 'Ze' Richard <ze@nbox.org>                 # Do not fail on missing commands.
 
 # Issue #161: do not load if not an interactive shell
-test -z "$TERM" -o "x$TERM" = dumb && return
+test -z "$TERM" -o "x$TERM" = xdumb && return
 
 _LP_SHELL_bash_42=false
 
