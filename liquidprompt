@@ -49,13 +49,8 @@
 # Issue #161: do not load if not an interactive shell
 test -z "$TERM" -o "x$TERM" = xdumb && return
 
-_LP_SHELL_bash_42=false
-
 # Check for recent enough version of bash.
 if test -n "$BASH_VERSION"; then
-    if [[ $BASH_VERSION == 4.2.* ]]; then
-        _LP_SHELL_bash_42=true
-    fi
     _LP_SHELL_bash=true
     _LP_OPEN_ESC="\["
     _LP_CLOSE_ESC="\]"
@@ -381,11 +376,8 @@ unset _lp_connection
 
 _lp_get_home_tilde_collapsed()
 {
-    if $_LP_SHELL_bash_42; then
-        echo ${PWD/#$HOME/~}
-    else
-        echo ${PWD/#$HOME/'~'}
-    fi
+    local tilde="~"
+    echo ${PWD/#$HOME/$tilde}
 }
 
 # Shorten the path of the current working directory
