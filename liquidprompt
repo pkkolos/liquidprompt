@@ -269,6 +269,9 @@ unset _lp_source_config
 # Disable features if the tool is not installed
 [[ "$LP_ENABLE_GIT" = 1 ]] && { command -v git >/dev/null || LP_ENABLE_GIT=0 ; }
 [[ "$LP_ENABLE_HG"  = 1 ]] && { command -v hg  >/dev/null || LP_ENABLE_HG=0  ; }
+command -v screen >/dev/null ; _lp_bool _LP_ENABLE_SCREEN $?
+command -v tmux >/dev/null   ; _lp_bool _LP_ENABLE_TMUX $?
+$_LP_ENABLE_SCREEN || $_LP_ENABLE_TMUX ; _lp_bool _LP_ENABLE_DETACHED_SESSIONS $?
 
 # If we are running in a terminal multiplexer, brackets are colored
 if [[ "$TERM" == screen* ]]; then
@@ -474,16 +477,15 @@ _lp_jobcount_color()
 
     local running=$(( $(jobs -r | wc -l) ))
     local stopped=$(( $(jobs -s | wc -l) ))
-    local n_screen=$(screen -ls 2> /dev/null | grep -c '[Dd]etach[^)]*)$')
-    local n_tmux=$(tmux list-sessions 2> /dev/null | grep -cvE 'attached|command not found')
-    local detached=$(( $n_screen + $n_tmux ))
-    local m_detached="d"
     local m_stop="z"
     local m_run="&"
-    local ret=""
+    local ret
 
-    if [[ $detached != "0" ]]; then
-        ret="${ret}${LP_COLOR_JOB_D}${detached}${m_detached}${NO_COL}"
+    if $_LP_ENABLE_DETACHED_SESSIONS; then
+        local -i detached=0
+        $_LP_ENABLE_SCREEN && let detached=$(screen -ls 2> /dev/null | grep -c '[Dd]etach[^)]*)$')
+        $_LP_ENABLE_TMUX && let detached+=$(tmux list-sessions 2> /dev/null | grep -cv 'attached')
+        (( detached > 0 )) && ret="${ret}${LP_COLOR_JOB_D}${detached}d${NO_COL}"
     fi
 
     if [[ $running != "0" ]]; then
