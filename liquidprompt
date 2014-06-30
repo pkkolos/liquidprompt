@@ -933,11 +933,13 @@ prompt_on()
         LP_OLD_PS1="$PS1"
         if $_LP_SHELL_bash; then
             LP_OLD_PROMPT_COMMAND="$PROMPT_COMMAND"
+            LP_OLD_SHOPT="$(shopt -p promptvars)"
         else # zsh
             LP_OLD_PROMPT_COMMAND="$(whence -f precmd)"
         fi
     fi
     if $_LP_SHELL_bash; then
+        shopt -s promptvars
         PROMPT_COMMAND=_lp_set_prompt
     else # zsh
         precmd() { _lp_set_prompt ; }
@@ -949,6 +951,7 @@ prompt_off()
 {
     PS1=$LP_OLD_PS1
     if $_LP_SHELL_bash; then
+        eval "$LP_OLD_SHOPT"
         PROMPT_COMMAND="$LP_OLD_PROMPT_COMMAND"
     else # zsh
         precmd() { : ; }
@@ -961,6 +964,7 @@ prompt_OFF()
 {
     PS1="❯ "
     if $_LP_SHELL_bash; then
+        shopt -u promptvars
         PROMPT_COMMAND="$LP_OLD_PROMPT_COMMAND"
     else # zsh
         precmd() { : ; }
