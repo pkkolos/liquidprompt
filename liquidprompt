@@ -224,7 +224,7 @@ _lp_source_config()
     LP_PS1_PREFIX=${LP_PS1_PREFIX-""}
     LP_PS1_POSTFIX=${LP_PS1_POSTFIX-""}
     LP_MARK_PREFIX="${LP_MARK_PREFIX-" "}"
-    LP_MARK_DEFAULT="${LP_MARK_DEFAULT:-"$_LP_MARK_SYMBOL"}"
+    LP_MARK_DEFAULT="${LP_MARK_DEFAULT:-$_LP_MARK_SYMBOL}"
     LP_MARK_GIT="${LP_MARK_GIT:-"±"}"
     LP_MARK_HG="${LP_MARK_HG:-"☿"}"
     LP_MARK_SVN="${LP_MARK_SVN:-"‡"}"
@@ -311,7 +311,7 @@ _lp_escape()
 # Yellow for root, bold if the user is not the login one, else no color.
 if [[ "$EUID" -ne "0" ]]; then  # if user is not root
     # if user is not login user
-    if [[ ${USER} != "$(logname 2>/dev/null || echo $LOGNAME)" ]]; then
+    if [[ ${USER} != "$(logname 2>/dev/null || echo "$LOGNAME")" ]]; then
         LP_USER="${LP_COLOR_USER_ALT}${_LP_USER_SYMBOL}${NO_COL}"
     else
         if [[ "${LP_USER_ALWAYS}" -ne "0" ]]; then
@@ -397,7 +397,7 @@ unset _lp_connection
 _lp_get_home_tilde_collapsed()
 {
     local tilde="~"
-    echo ${PWD/#$HOME/$tilde}
+    echo "${PWD/#$HOME/$tilde}"
 }
 
 # Shorten the path of the current working directory
@@ -785,7 +785,7 @@ _lp_set_prompt()
     if (( err != 0 )); then
         LP_ERR=" $LP_COLOR_ERR$err$NO_COL"
     else
-        LP_ERR=     # Hidden
+        LP_ERR=""
     fi
 
     # Reset IFS to its default value to avoid strange behaviors
