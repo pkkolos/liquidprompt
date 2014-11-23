@@ -284,14 +284,14 @@ if [[ "$TERM" == screen* ]]; then
     (( LP_ENABLE_TITLE = LP_ENABLE_TITLE && LP_ENABLE_SCREEN_TITLE ))
     LP_TITLE_OPEN="\033k"
     LP_TITLE_CLOSE="\033\\\\"
-elif [[ "$TERM" == linux* ]]; then
-    LP_ENABLE_TITLE=0
 else
     LP_BRACKET_OPEN="${LP_MARK_BRACKET_OPEN}"
     LP_BRACKET_CLOSE="${LP_MARK_BRACKET_CLOSE}"
     LP_TITLE_OPEN="\e]0;"
     LP_TITLE_CLOSE="\a"
 fi
+
+[[ "_$TERM" == _linux* ]] && LP_ENABLE_TITLE=0
 
 # Default value for LP_PERM when LP_ENABLE_PERM is 0
 LP_PERM=:   # without color
