@@ -1,6 +1,6 @@
 ################################################################################
 # LIQUID PROMPT
-# An intelligent and non intrusive prompt for bash and zsh
+# An intelligent and non-intrusive prompt for Bash and zsh
 ################################################################################
 
 # Licensed under the AGPL version 3
@@ -105,7 +105,7 @@ unset LP_OLD_PWD
 # to benefit of 'local' variables.
 #
 # What we do here:
-# 1. Setup variables that can be used by the user: the "API" of liquidprompt
+# 1. Setup variables that can be used by the user: the "API" of Liquid Prompt
 #    for config/theme. Those variables are local to the function.
 #    In practice, this is only color variables.
 # 2. Setup default values
@@ -925,10 +925,10 @@ prompt_tag()
     export LP_PS1_PREFIX="$(_lp_sr "$1")"
 }
 
-# Activate the liquid prompt
+# Activate Liquid Prompt
 prompt_on()
 {
-    # if liquidprompt has not been already set
+    # if Liquid Prompt has not been already set
     if [[ -z "$LP_OLD_PS1" ]]; then
         LP_OLD_PS1="$PS1"
         if $_LP_SHELL_bash; then
@@ -972,7 +972,7 @@ prompt_OFF()
     fi
 }
 
-# By default, sourcing liquidprompt will activate the liquid prompt
+# By default, sourcing liquidprompt will activate Liquid Prompt
 prompt_on
 
 # vim: set et sts=4 sw=4 tw=120 ft=sh:
