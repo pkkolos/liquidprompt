@@ -281,6 +281,9 @@ command -v screen >/dev/null ; _lp_bool _LP_ENABLE_SCREEN $?
 command -v tmux >/dev/null   ; _lp_bool _LP_ENABLE_TMUX $?
 $_LP_ENABLE_SCREEN || $_LP_ENABLE_TMUX ; _lp_bool _LP_ENABLE_DETACHED_SESSIONS $?
 
+# Use standard path symbols inside Midnight Commander
+[[ -n "$MC_SID" ]] && LP_ENABLE_SHORTEN_PATH=0
+
 # If we are running in a terminal multiplexer, brackets are colored
 if [[ "$TERM" == screen* ]]; then
     LP_BRACKET_OPEN="${LP_COLOR_IN_MULTIPLEXER}${LP_MARK_BRACKET_OPEN}${NO_COL}"
