@@ -508,8 +508,8 @@ _lp_jobcount_color()
 
     if $_LP_ENABLE_DETACHED_SESSIONS; then
         local -i detached=0
-        $_LP_ENABLE_SCREEN && let detached=$(screen -ls 2> /dev/null | grep -c '[Dd]etach[^)]*)$')
-        $_LP_ENABLE_TMUX && let detached+=$(tmux list-sessions 2> /dev/null | grep -cv 'attached')
+        $_LP_ENABLE_SCREEN && let detached=$(screen -ls 2> /dev/null | \grep -c '[Dd]etach[^)]*)$')
+        $_LP_ENABLE_TMUX && let detached+=$(tmux list-sessions 2> /dev/null | \grep -cv 'attached')
         (( detached > 0 )) && ret="${ret}${LP_COLOR_JOB_D}${detached}d${NO_COL}"
     fi
 
@@ -580,7 +580,7 @@ _lp_git_branch_color()
 
         local end
         end="$NO_COL"
-        if LC_ALL=C \git status --porcelain 2>/dev/null | grep -Eq '^\?\?'; then
+        if LC_ALL=C \git status --porcelain 2>/dev/null | \grep -Eq '^\?\?'; then
             end="$LP_COLOR_CHANGES$LP_MARK_UNTRACKED$end"
         fi
 
@@ -708,7 +708,7 @@ _lp_hg_branch_color()
 
         local has_untracked
         has_untracked=
-        if hg status -u 2>/dev/null | grep -q '^\?' >/dev/null; then
+        if hg status -u 2>/dev/null | \grep -q '^\?' >/dev/null; then
             has_untracked="$LP_COLOR_CHANGES$LP_MARK_UNTRACKED"
         fi
 
@@ -717,7 +717,7 @@ _lp_hg_branch_color()
         # Unfortunately this requires contacting the remote, so this is always slow
         # => disabled  https://github.com/nojhan/liquidprompt/issues/217
         local -i commits
-        #commits=$(hg outgoing --no-merges ${branch} 2>/dev/null | grep -c '\(^changeset\:\)')
+        #commits=$(hg outgoing --no-merges ${branch} 2>/dev/null | \grep -c '\(^changeset\:\)')
         commits=0
 
         # Check if there is some uncommitted stuff
