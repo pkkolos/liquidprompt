@@ -4,6 +4,7 @@
 
 # If you want to use different themes and features,
 # you can load the corresponding files here:
+source ~/.config/oh-my-git/prompt.sh
 #source ~/.config/liquidprompt/default.theme
 LP_PS1_FILE=~/.config/liquidprompt/default.ps1
 
@@ -55,6 +56,10 @@ LP_ENABLE_VCS_ROOT=0
 # Do you want to use the Git special features?
 # Recommended value is 1
 LP_ENABLE_GIT=1
+
+# Do you want to use the Oh-My-Git special features?
+# Recommended value is 0
+LP_ENABLE_OHMYGIT=1
 
 # Do you want to use the Mercurial special features?
 # Recommended value is 1

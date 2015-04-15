@@ -206,6 +206,7 @@ _lp_source_config()
     LP_ENABLE_TIME=${LP_ENABLE_TIME:-0}
     LP_ENABLE_JOBS=${LP_ENABLE_JOBS:-1}
     LP_ENABLE_GIT=${LP_ENABLE_GIT:-1}
+    LP_ENABLE_OHMYGIT=${LP_ENABLE_OHMYGIT:-0}
     LP_ENABLE_HG=${LP_ENABLE_HG:-1}
     LP_ENABLE_VCSH=${LP_ENABLE_VCSH:-1}
     LP_ENABLE_VCS_ROOT=${LP_ENABLE_VCS_ROOT:-0}
@@ -574,10 +575,17 @@ _lp_git_branch_color()
 {
     [[ "$LP_ENABLE_GIT" != 1 ]] && return
 
+    if [[ "$LP_ENABLE_OHMYGIT" != 0 ]]; then
+        local omg_prompt
+        if omg_prompt="$(_omg_build_prompt)"; then
+            echo -n "$omg_prompt"
+            return
+        fi
+    fi
+
     local branch
     branch="$(_lp_git_branch)"
     if [[ -n "$branch" ]]; then
-
         local end
         end="$NO_COL"
         if LC_ALL=C \git status --porcelain 2>/dev/null | \grep -Eq '^\?\?'; then
@@ -897,7 +905,6 @@ _lp_set_prompt()
                     LP_VCS_TYPE=""
                 fi # nothing
             fi # hg
-
         else # if this vcs rep is disabled
             LP_VCS="" # not necessary, but more readable
             LP_VCS_TYPE="disabled"
