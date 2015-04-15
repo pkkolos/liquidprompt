@@ -748,13 +748,14 @@ _lp_hg_branch_color()
 # DESIGN #
 ##########
 
+# Sed expression using extended regexp to remove shell codes around terminal escape sequences
+_LP_CLEAN_ESC="$(printf "s/(%q)[^%.1q]*%q//g" "$_LP_OPEN_ESC" "$_LP_CLOSE_ESC" "$_LP_CLOSE_ESC")"
+
 # Remove all colors and escape characters of the given string and return a pure text
 _lp_as_text()
 {
-    # Sed expression using extended regexp to remove shell codes around terminal escape sequences
-    local clean_esc="$(printf "s/(%q)[^%.1q]*%q//g" "$_LP_OPEN_ESC" "$_LP_CLOSE_ESC" "$_LP_CLOSE_ESC")"
-
-    echo -n "$1" | sed -r "$clean_esc"
+    # Remove shell codes from the computed prompt
+    echo -n "$1" | sed -r "$_LP_CLEAN_ESC"
 }
 
 _lp_title()
