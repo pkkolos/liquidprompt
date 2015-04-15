@@ -970,6 +970,11 @@ prompt_tag()
     export LP_PS1_PREFIX="$(_lp_sr "$1")"
 }
 
+prompt_fulleval()
+{
+    LP_OLD_PWD=""
+}
+
 # Activate Liquid Prompt
 prompt_on()
 {
