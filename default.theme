@@ -13,7 +13,7 @@ if [[ "$(locale -k LC_CTYPE | sed -n 's/^charmap="\(.*\)"/\1/p')" == *"UTF-8"* ]
     LP_MARK_HG="☿"             # prompt mark in hg repositories
     LP_MARK_SVN="‡"            # prompt mark in svn repositories
     LP_MARK_GIT="±"            # prompt mark in git repositories
-    LP_MARK_DISABLED="⌀"       # if vcs feature is disabled
+    LP_MARK_DISABLED="⌀"       # prompt mark in directory with disabled VCS info
     LP_MARK_UNTRACKED="*"      # if git has untracked files
     LP_MARK_STASH="+"          # if git has stashs
     LP_MARK_SHORTEN_PATH=" … " # prompt mark in shortened paths
