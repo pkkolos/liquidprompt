@@ -50,7 +50,7 @@
 test -z "$TERM" -o "x$TERM" = xdumb && return
 
 # Check for recent enough version of bash.
-if test -n "$BASH_VERSION"; then
+if test -n "${BASH_VERSION-}"; then
     _LP_SHELL_bash=true
     _LP_SHELL_zsh=false
     _LP_OPEN_ESC="\["
@@ -61,7 +61,7 @@ if test -n "$BASH_VERSION"; then
     _LP_TIME_SYMBOL="\t"
     _LP_MARK_SYMBOL='\$'
     _LP_PWD_SYMBOL="\\w"
-elif test -n "$ZSH_VERSION"; then
+elif test -n "${ZSH_VERSION-}"; then
     _LP_SHELL_bash=false
     _LP_SHELL_zsh=true
     _LP_OPEN_ESC="%{"
