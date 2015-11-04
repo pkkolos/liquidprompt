@@ -52,6 +52,7 @@ test -z "$TERM" -o "x$TERM" = xdumb && return
 # Check for recent enough version of bash.
 if test -n "$BASH_VERSION"; then
     _LP_SHELL_bash=true
+    _LP_SHELL_zsh=false
     _LP_OPEN_ESC="\["
     _LP_CLOSE_ESC="\]"
     _LP_USER_SYMBOL="\u"
@@ -62,6 +63,7 @@ if test -n "$BASH_VERSION"; then
     _LP_PWD_SYMBOL="\\w"
 elif test -n "$ZSH_VERSION"; then
     _LP_SHELL_bash=false
+    _LP_SHELL_zsh=true
     _LP_OPEN_ESC="%{"
     _LP_CLOSE_ESC="%}"
     _LP_USER_SYMBOL="%n"
@@ -1010,7 +1012,7 @@ prompt_on()
         shopt -s promptvars
         PROMPT_COMMAND=_lp_set_prompt
     else # zsh
-        precmd() { _lp_set_prompt ; }
+        _lp_main_precmd() { _lp_set_prompt ; }
     fi
 }
 
@@ -1022,7 +1024,7 @@ prompt_off()
         eval "$LP_OLD_SHOPT"
         PROMPT_COMMAND="$LP_OLD_PROMPT_COMMAND"
     else # zsh
-        precmd() { : ; }
+        _lp_main_precmd() { : ; }
         eval "$LP_OLD_PROMPT_COMMAND"
     fi
 }
@@ -1035,10 +1037,16 @@ prompt_OFF()
         shopt -u promptvars
         PROMPT_COMMAND="$LP_OLD_PROMPT_COMMAND"
     else # zsh
-        precmd() { : ; }
+        _lp_main_precmd() { : ; }
         eval "$LP_OLD_PROMPT_COMMAND"
     fi
 }
+
+# Add _lp_main_precmd to global precmd hook
+if $_LP_SHELL_zsh; then
+    typeset -ga precmd_functions
+    precmd_functions+=(_lp_main_precmd)
+fi
 
 # By default, sourcing liquidprompt will activate Liquid Prompt
 prompt_on
