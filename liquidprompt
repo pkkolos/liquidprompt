@@ -292,7 +292,7 @@ command -v tmux >/dev/null   ; _lp_bool _LP_ENABLE_TMUX $?
 $_LP_ENABLE_SCREEN || $_LP_ENABLE_TMUX ; _lp_bool _LP_ENABLE_DETACHED_SESSIONS $?
 
 # Use standard path symbols inside Midnight Commander
-[[ -n "$MC_SID" ]] && LP_ENABLE_SHORTEN_PATH=0
+[[ -n "${MC_SID-}" ]] && LP_ENABLE_SHORTEN_PATH=0
 
 # If we are running in a terminal multiplexer, brackets are colored
 if [[ "$TERM" == screen* ]]; then
@@ -372,7 +372,7 @@ fi
 
 _lp_connection()
 {
-    if [[ -n "$SSH_CLIENT$SSH2_CLIENT$SSH_TTY" ]]; then
+    if [[ -n "${SSH_CLIENT-}${SSH2_CLIENT-}${SSH_TTY-}" ]]; then
         echo ssh
     else
         # tmux: see GH #304
@@ -875,28 +875,28 @@ _lp_set_prompt()
     _lp_sudo_check
 
     # in main prompt: no space
-    if [[ "$LP_ENABLE_PROXY,$http_proxy" = 1,?* ]]; then
+    if [[ "$LP_ENABLE_PROXY,${http_proxy-}" = 1,?* ]]; then
         LP_PROXY="$LP_COLOR_PROXY$LP_MARK_PROXY$NO_COL"
     else
         LP_PROXY=""
     fi
 
     # Display the current Python virtual environment, if available
-    if [[ "$LP_ENABLE_VIRTUALENV,$VIRTUAL_ENV" = 1,?* ]]; then
+    if [[ "$LP_ENABLE_VIRTUALENV,${VIRTUAL_ENV-}" = 1,?* ]]; then
         LP_VENV=" [${LP_COLOR_VIRTUALENV}${VIRTUAL_ENV##*/}${NO_COL}]"
     else
         LP_VENV=""
     fi
 
     # Display the current software collections enabled, if available
-    if [[ "$LP_ENABLE_SCLS,$X_SCLS" = 1,?* ]]; then
+    if [[ "$LP_ENABLE_SCLS,${X_SCLS-}" = 1,?* ]]; then
         LP_SCLS=" [${LP_COLOR_VIRTUALENV}${X_SCLS%"${X_SCLS##*[![:space:]]}"}${NO_COL}]"
     else
         LP_SCLS=""
     fi
 
     # if change of working directory
-    if [[ "$LP_OLD_PWD" != "LP:$PWD" ]]; then
+    if [[ "${LP_OLD_PWD-}" != "LP:$PWD" ]]; then
         # LP_PERM: shows a ":"
         # - colored in green if user has write permission on the current dir
         # - colored in red if not
@@ -915,7 +915,7 @@ _lp_set_prompt()
             LP_VCS_TYPE="git"
             if [[ -n "$LP_VCS" ]]; then
                 # If this is a vcsh repository
-                if [[ -n "$VCSH_DIRECTORY" ]]; then
+                if [[ -n "${VCSH_DIRECTORY-}" ]]; then
                     LP_VCS_TYPE="git-vcsh"
                 fi
                 # If this is a git-svn repository
@@ -959,7 +959,7 @@ _lp_set_prompt()
         esac
     fi
 
-    if [[ -f "$LP_PS1_FILE" ]]; then
+    if [[ -f "${LP_PS1_FILE-}" ]]; then
         source "$LP_PS1_FILE"
     fi
 
@@ -1004,7 +1004,7 @@ prompt_fulleval()
 prompt_on()
 {
     # if Liquid Prompt has not been already set
-    if [[ -z "$LP_OLD_PS1" ]]; then
+    if [[ -z "${LP_OLD_PS1-}" ]]; then
         LP_OLD_PS1="$PS1"
         if $_LP_SHELL_bash; then
             LP_OLD_PROMPT_COMMAND="$PROMPT_COMMAND"
