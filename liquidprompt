@@ -455,7 +455,7 @@ _lp_shorten_path()
         return
     fi
 
-    local ret=""
+    local ret=
 
     local p="$(_lp_get_home_tilde_collapsed)"
     local mask="${LP_MARK_SHORTEN_PATH}"
@@ -524,7 +524,7 @@ _lp_jobcount_color()
 
     local m_stop="z"
     local m_run="&"
-    local ret
+    local ret=
 
     if $_LP_ENABLE_DETACHED_SESSIONS; then
         local -i detached=0
@@ -618,7 +618,7 @@ _lp_git_branch_color()
         local remote
         remote="$(\git config --get branch.${branch}.remote 2>/dev/null)"
 
-        local has_commit
+        local has_commit=""
         local commit_ahead
         local commit_behind
         if [[ -n "$remote" ]]; then
