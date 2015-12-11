@@ -45,6 +45,7 @@
 # Rolf Morel        <rolfmorel@gmail.com>         # "Shorten path" refactoring and fixes
 # Thomas Debesse    <thomas.debesse@gmail.com>    # Fix columns use.
 # Yann 'Ze' Richard <ze@nbox.org>                 # Do not fail on missing commands.
+# Austen Adler      <stonewareslord@gmail.com>    # ZSH runtime
 
 # Issue #161: do not load if not an interactive shell
 test -z "$TERM" -o "x$TERM" = xdumb && return
@@ -184,27 +185,15 @@ _lp_source_config()
 
     unset ti_sgr0 ti_bold ti_setaf ti_setab
 
-    local confdir
-    local confdirs
     local configfile
 
-    configfile="${sysconfdir:-"/etc"}/xdg/liquidprompt/liquidpromptrc"
+    # System config
+    configfile="/etc/xdg/liquidprompt/liquidpromptrc"
     [[ -f "$configfile" ]] && source "$configfile"
 
-    confdirs="${XDG_CONFIG_HOME:-"$HOME/.config"}"
-    [[ -n "$XDG_CONFIG_DIRS" ]] && confdir="${confdirs}:$XDG_CONFIG_DIRS"
-    if $_LP_SHELL_bash; then
-        IFS=':' read -ra confdirs <<< "$confdirs"
-    else # zsh
-        IFS=':' read -rA confdirs <<< "$confdirs"
-    fi
-    for confdir in "${confdirs[@]}"; do
-        configfile="$confdir/liquidprompt/liquidpromptrc"
-        if [[ -f "$configfile" ]]; then
-            source "$configfile"
-            break
-        fi
-    done
+    # Local config
+    configfile="${XDG_CONFIG_HOME:-"$HOME/.config"}/liquidprompt/liquidpromptrc"
+    [[ -f "$configfile" ]] && source "$configfile"
 
     # Default values (globals)
     LP_ENABLE_PERM=${LP_ENABLE_PERM:-1}
@@ -287,7 +276,6 @@ unset _lp_source_config
 command -v screen >/dev/null ; _lp_bool _LP_ENABLE_SCREEN $?
 command -v tmux >/dev/null   ; _lp_bool _LP_ENABLE_TMUX $?
 $_LP_ENABLE_SCREEN || $_LP_ENABLE_TMUX ; _lp_bool _LP_ENABLE_DETACHED_SESSIONS $?
-
 # Use standard path symbols inside Midnight Commander
 [[ -n "${MC_SID-}" ]] && LP_ENABLE_SHORTEN_PATH=0
 
