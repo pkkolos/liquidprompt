@@ -282,8 +282,8 @@ _lp_source_config
 unset _lp_source_config
 
 # Disable features if the tool is not installed
-[[ "$LP_ENABLE_GIT" = 1 ]] && { command -v git >/dev/null || LP_ENABLE_GIT=0 ; }
-[[ "$LP_ENABLE_HG"  = 1 ]] && { command -v hg  >/dev/null || LP_ENABLE_HG=0  ; }
+(( LP_ENABLE_GIT )) && { command -v git  >/dev/null || LP_ENABLE_GIT=0 ; }
+(( LP_ENABLE_HG ))  && { command -v hg   >/dev/null || LP_ENABLE_HG=0  ; }
 command -v screen >/dev/null ; _lp_bool _LP_ENABLE_SCREEN $?
 command -v tmux >/dev/null   ; _lp_bool _LP_ENABLE_TMUX $?
 $_LP_ENABLE_SCREEN || $_LP_ENABLE_TMUX ; _lp_bool _LP_ENABLE_DETACHED_SESSIONS $?
@@ -333,7 +333,7 @@ if [[ "$EUID" -ne "0" ]]; then  # if user is not root
     else
         LP_USER=""
     fi
-    if [[ "$LP_ENABLE_SUDO" = 1 ]] && command -v sudo >/dev/null; then
+    if (( LP_ENABLE_SUDO )) && command -v sudo >/dev/null; then
         LP_COLOR_MARK_NO_SUDO="$LP_COLOR_MARK"
         # Test the code with the commands:
         #   sudo id   # sudo, enter your credentials
@@ -352,7 +352,7 @@ else # root!
     LP_COLOR_MARK="${LP_COLOR_MARK_ROOT}"
     LP_COLOR_PATH="${LP_COLOR_PATH_ROOT}"
     # Disable VCS info for all paths
-    if [[ "$LP_ENABLE_VCS_ROOT" != 1 ]]; then
+    if (( ! LP_ENABLE_VCS_ROOT )); then
         LP_DISABLED_VCS_PATH=/
         LP_MARK_DISABLED="$_LP_MARK_SYMBOL"
     fi
@@ -395,7 +395,7 @@ LP_HOST=""
 [[ -r /etc/debian_chroot ]] && LP_HOST="($(< /etc/debian_chroot))"
 
 # Which host symbol should we use?
-if [[ "${LP_ENABLE_FQDN}" -eq "1" ]] ; then
+if (( LP_ENABLE_FQDN )); then
     LP_HOST_SYMBOL="${_LP_FQDN_SYMBOL}"
 else
     LP_HOST_SYMBOL="${_LP_HOST_SYMBOL}"
@@ -410,11 +410,11 @@ fi
 
 case "$(_lp_connection)" in
     lcl)
-        if [[ "${LP_HOSTNAME_ALWAYS}" -eq "0" ]]; then
+        if (( LP_HOSTNAME_ALWAYS )); then
+            LP_HOST="${LP_HOST}${LP_COLOR_HOST}${LP_HOST_SYMBOL}${NO_COL}"
+        else
             # FIXME do we want to display the chroot if local?
             LP_HOST="" # no hostname if local
-        else
-            LP_HOST="${LP_HOST}${LP_COLOR_HOST}${LP_HOST_SYMBOL}${NO_COL}"
         fi
         ;;
     ssh)
@@ -447,7 +447,7 @@ _lp_get_home_tilde_collapsed()
 # * show at least LP_PATH_KEEP leading dirs and current directory
 _lp_shorten_path()
 {
-    if [[ "$LP_ENABLE_SHORTEN_PATH" != 1 ]]; then
+    if (( ! LP_ENABLE_SHORTEN_PATH )); then
         LP_PWD="$_LP_PWD_SYMBOL"
         return
     fi
@@ -517,7 +517,7 @@ _lp_shorten_path()
 # - attached stopped jobs (suspended with Ctrl-Z)
 _lp_jobcount_color()
 {
-    [[ "$LP_ENABLE_JOBS" != 1 ]] && return
+    (( LP_ENABLE_JOBS )) || return
 
     local m_stop="z"
     local m_run="&"
@@ -565,7 +565,7 @@ _lp_are_vcs_enabled()
 # Get the branch name of the current directory
 _lp_git_branch()
 {
-    [[ "$LP_ENABLE_GIT" != 1 ]] && return
+    (( LP_ENABLE_GIT )) || return
 
     \git rev-parse --is-inside-work-tree >/dev/null 2>&1 || return
 
@@ -589,7 +589,7 @@ _lp_git_branch()
 # Add the number of pending commits and the impacted lines.
 _lp_git_branch_color()
 {
-    [[ "$LP_ENABLE_GIT" != 1 ]] && return
+    (( LP_ENABLE_GIT )) || return
 
     if [[ "$LP_ENABLE_OHMYGIT" != 0 ]]; then
         local omg_prompt
@@ -699,7 +699,7 @@ _lp_upwards_find()
 # Get the branch name of the current directory
 _lp_hg_branch()
 {
-    [[ "$LP_ENABLE_HG" != 1 ]] && return
+    (( LP_ENABLE_HG )) || return
 
     # First do a simple search to avoid having to invoke hg -- at least on my
     # machine, the python startup causes a noticeable hitch when changing
@@ -721,7 +721,7 @@ _lp_hg_branch()
 # - TODO: yellow if there is some commits not pushed
 _lp_hg_branch_color()
 {
-    [[ "$LP_ENABLE_HG" != 1 ]] && return
+    (( LP_ENABLE_HG )) || return
 
     local branch
     local ret
@@ -788,7 +788,7 @@ _lp_as_text()
 
 _lp_title()
 {
-    [[ "$LP_ENABLE_TITLE" != "1" ]] && return
+    (( LP_ENABLE_TITLE )) || return
 
     # Get the current computed prompt as pure text
     echo -n "${_LP_OPEN_ESC}${LP_TITLE_OPEN}"
@@ -836,7 +836,7 @@ _lp_sb()
 
 _lp_time()
 {
-    [[ "$LP_ENABLE_TIME" != 1 ]] && return
+    (( LP_ENABLE_TIME )) || return
     echo -n "${LP_COLOR_TIME}${_LP_TIME_SYMBOL}${NO_COL}"
 }
 
@@ -897,7 +897,7 @@ _lp_set_prompt()
         # LP_PERM: shows a ":"
         # - colored in green if user has write permission on the current dir
         # - colored in red if not
-        if [[ "$LP_ENABLE_PERM" = 1 ]]; then
+        if (( LP_ENABLE_PERM )); then
             if [[ -w "${PWD}" ]]; then
                 LP_PERM="${LP_COLOR_WRITE}:${NO_COL}"
             else
