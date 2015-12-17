@@ -77,14 +77,12 @@ elif test -n "${ZSH_VERSION-}"; then
     _LP_PWD_SYMBOL="%~"
     _LP_PERCENT='%%'
     _LP_BACKSLASH="\\"
+
+    # For ZSH, autoload required functions
+    autoload -Uz add-zsh-hook
 else
     echo "liquidprompt: shell not supported" >&2
     return
-fi
-
-# For ZSH, autoload required functions
-if $_LP_SHELL_zsh; then
-    autoload -Uz add-zsh-hook
 fi
 
 # Store $2 (or $?) as a true/false value in variable named $1
@@ -214,7 +212,6 @@ _lp_source_config()
     LP_ENABLE_JOBS=${LP_ENABLE_JOBS:-1}
     LP_ENABLE_GIT=${LP_ENABLE_GIT:-1}
     LP_ENABLE_OHMYGIT=${LP_ENABLE_OHMYGIT:-0}
-    LP_ENABLE_VCSH=${LP_ENABLE_VCSH:-1}
     LP_ENABLE_HG=${LP_ENABLE_HG:-1}
     LP_ENABLE_TIME=${LP_ENABLE_TIME:-0}
     LP_ENABLE_VIRTUALENV=${LP_ENABLE_VIRTUALENV:-1}
@@ -275,10 +272,10 @@ _lp_source_config
 unset _lp_source_config
 
 # Disable features if the tool is not installed
-(( LP_ENABLE_GIT )) && { command -v git  >/dev/null || LP_ENABLE_GIT=0 ; }
-(( LP_ENABLE_HG ))  && { command -v hg   >/dev/null || LP_ENABLE_HG=0  ; }
+(( LP_ENABLE_GIT )) && { command -v git >/dev/null || LP_ENABLE_GIT=0 ; }
+(( LP_ENABLE_HG ))  && { command -v hg  >/dev/null || LP_ENABLE_HG=0  ; }
 command -v screen >/dev/null ; _lp_bool _LP_ENABLE_SCREEN $?
-command -v tmux >/dev/null   ; _lp_bool _LP_ENABLE_TMUX $?
+command -v tmux   >/dev/null ; _lp_bool _LP_ENABLE_TMUX $?
 $_LP_ENABLE_SCREEN || $_LP_ENABLE_TMUX ; _lp_bool _LP_ENABLE_DETACHED_SESSIONS $?
 # Use standard path symbols inside Midnight Commander
 [[ -n "${MC_SID-}" ]] && LP_ENABLE_SHORTEN_PATH=0
@@ -795,12 +792,12 @@ _lp_smart_mark()
 {
     local mark
     case "$LP_VCS_TYPE" in
-        git     ) mark="$LP_MARK_GIT"                           ;;
-        git-svn ) mark="$LP_MARK_GIT$LP_MARK_SVN"               ;;
+        git)      mark="$LP_MARK_GIT" ;;
+        git-svn)  mark="$LP_MARK_GIT$LP_MARK_SVN" ;;
         git-vcsh) mark="$LP_MARK_VCSH$LP_MARK_GIT$LP_MARK_VCSH" ;;
-        hg      ) mark="$LP_MARK_HG"                            ;;
-        disabled) mark="$LP_MARK_DISABLED"                      ;;
-        *       ) mark="$LP_MARK_DEFAULT"                       ;;
+        hg)       mark="$LP_MARK_HG" ;;
+        disabled) mark="$LP_MARK_DISABLED" ;;
+        *)        mark="$LP_MARK_DEFAULT" ;;
     esac
     echo -nE "${mark}${NO_COL}"
 }
@@ -943,9 +940,9 @@ _lp_set_prompt()
     elif [[ -n "$LP_VCS_TYPE" ]]; then # we are still in a VCS dir
         case "$LP_VCS_TYPE" in
             # git, git-svn
-            git*    ) LP_VCS="$(_lp_sl "$(_lp_git_branch_color)")" ;;
-            hg      ) LP_VCS="$(_lp_sl "$(_lp_hg_branch_color)")"  ;;
-            disabled) LP_VCS=""                                    ;;
+            git*)     LP_VCS="$(_lp_sl "$(_lp_git_branch_color)")" ;;
+            hg)       LP_VCS="$(_lp_sl "$(_lp_hg_branch_color)")" ;;
+            disabled) LP_VCS="" ;;
         esac
     fi
 
