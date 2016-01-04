@@ -191,7 +191,8 @@ _lp_source_config()
     # NO_COL is special: it will be used at runtime, not just during config loading
     NO_COL="${_LP_OPEN_ESC}${ti_sgr0}${_LP_CLOSE_ESC}"
 
-    unset ti_sgr0 ti_bold ti_setaf ti_setab
+    unset ti_sgr0 ti_bold
+    unset -f ti_setaf ti_setab
 
     local configfile
 
@@ -275,7 +276,7 @@ _lp_source_config()
 }
 # do source config files
 _lp_source_config
-unset _lp_source_config
+unset -f _lp_source_config
 
 # Disable feature if the tool is not installed
 _lp_require_tool()
@@ -442,7 +443,7 @@ if (( LP_HOSTNAME_ALWAYS != -1 )); then
 fi
 
 # Useless now, so unset
-unset _lp_connection
+unset -f _lp_connection
 
 _lp_get_home_tilde_collapsed()
 {
