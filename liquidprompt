@@ -890,11 +890,14 @@ _lp_sb()
 # CURRENT TIME    #
 ###################
 
-_lp_time()
-{
-    (( LP_ENABLE_TIME )) || return
-    echo -nE "${LP_COLOR_TIME}${_LP_TIME_SYMBOL}${NO_COL}"
-}
+if (( LP_ENABLE_TIME )); then
+    _lp_time()
+    {
+        echo -nE "${LP_COLOR_TIME}${_LP_TIME_SYMBOL}${NO_COL}"
+    }
+else
+    _lp_time() { : ; }
+fi
 
 ########################
 # Construct the prompt #
