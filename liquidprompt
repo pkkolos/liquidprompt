@@ -320,11 +320,11 @@ _lp_escape()
 command -v _lp_sudo_check >/dev/null && unset -f _lp_sudo_check
 
 # Yellow for root, bold if the user is not the login one, else no color.
-if [[ "$EUID" -ne "0" ]]; then  # if user is not root
+if (( EUID != 0 )); then  # if user is not root
     # if user is not login user
-    if [[ ${USER} != "$(logname 2>/dev/null || echo "$LOGNAME")" ]]; then
+    if [[ "${USER}" != "$(logname 2>/dev/null || echo "$LOGNAME")" ]]; then
         LP_USER="${LP_COLOR_USER_ALT}${_LP_USER_SYMBOL}${NO_COL}"
-    elif [[ "${LP_USER_ALWAYS}" -ne "0" ]]; then
+    elif (( LP_USER_ALWAYS )); then
         LP_USER="${LP_COLOR_USER_LOGGED}${_LP_USER_SYMBOL}${NO_COL}"
     else
         LP_USER=""
@@ -462,13 +462,13 @@ _lp_shorten_path()
     local mask="${LP_MARK_SHORTEN_PATH}"
     local -i max_len=$(( ${COLUMNS:-80} * LP_PATH_LENGTH / 100 ))
 
-    if [[ ${LP_PATH_KEEP} == -1 ]]; then
+    if (( LP_PATH_KEEP == -1 )); then
         # only show the current directory, excluding any parent dirs
         ret="${p##*/}" # discard everything up to and including the last slash
         [[ "${ret}" == "" ]] && ret="/" # if in root directory
     elif (( ${#p} <= max_len )); then
         ret="${p}"
-    elif [[ ${LP_PATH_KEEP} == 0 ]]; then
+    elif (( LP_PATH_KEEP == 0 )); then
         # len is over max len, show as much of the tail as is allowed
         ret="${p##*/}" # show at least complete current directory
         p="${p:0:${#p} - ${#ret}}"
@@ -759,7 +759,7 @@ _lp_hg_branch()
     local branch
     branch="$(hg branch 2>/dev/null)"
 
-    [[ $? -eq 0 ]] && _lp_escape "$branch"
+    (( $? == 0 )) && _lp_escape "$branch"
 }
 
 # Set a color depending on the branch state:
