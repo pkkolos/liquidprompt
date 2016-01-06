@@ -890,13 +890,12 @@ _lp_sb()
 # CURRENT TIME    #
 ###################
 
+# LP_TIME is set colored, with a space on the right side
 if (( LP_ENABLE_TIME )); then
-    _lp_time()
-    {
-        echo -nE "${LP_COLOR_TIME}${_LP_TIME_SYMBOL}${NO_COL}"
-    }
+    # Never changes
+    LP_TIME="${LP_COLOR_TIME}${_LP_TIME_SYMBOL}${NO_COL} "
 else
-    _lp_time() { : ; }
+    LP_TIME=""
 fi
 
 ########################
@@ -927,7 +926,6 @@ _lp_set_prompt()
 
     # left of main prompt: space at right
     LP_JOBS="$(_lp_sr "$(_lp_jobcount_color)")"
-    LP_TIME="$(_lp_sr "$(_lp_time)")"
     _lp_sudo_check
 
     # in main prompt: no space
