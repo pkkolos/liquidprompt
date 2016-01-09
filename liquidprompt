@@ -452,7 +452,7 @@ _lp_shorten_path()
     if (( ! LP_ENABLE_SHORTEN_PATH )); then
         # We are not supposed to come here often as this case is already
         # optimized at install time
-        LP_PWD="${LP_COLOR_PATH}${_LP_PWD_SYMBOL}$NOCOL"
+        LP_PWD="${LP_COLOR_PATH}${_LP_PWD_SYMBOL}$NO_COL"
         return
     fi
 
@@ -505,9 +505,9 @@ _lp_shorten_path()
     fi
     # Escape special chars
     if $_LP_SHELL_bash; then
-        LP_PWD="${LP_COLOR_PATH}${ret//\\/\\\\}$NOCOL"
+        LP_PWD="${LP_COLOR_PATH}${ret//\\/\\\\}$NO_COL"
     else # zsh
-        LP_PWD="${LP_COLOR_PATH}${ret//\%/%%}$NOCOL"
+        LP_PWD="${LP_COLOR_PATH}${ret//\%/%%}$NO_COL"
     fi
 }
 
@@ -516,11 +516,11 @@ if (( LP_ENABLE_SHORTEN_PATH )); then
         # _lp_shorten_path becomes a noop
         _lp_shorten_path() { : ; }
         # Will never change
-        LP_PWD="${LP_COLOR_PATH}${_LP_DIR_SYMBOL}$NOCOL"
+        LP_PWD="${LP_COLOR_PATH}${_LP_DIR_SYMBOL}$NO_COL"
     fi
 else
     # Will never change
-    LP_PWD="${LP_COLOR_PATH}${_LP_PWD_SYMBOL}$NOCOL"
+    LP_PWD="${LP_COLOR_PATH}${_LP_PWD_SYMBOL}$NO_COL"
 
     if $_LP_SHELL_bash && [[ -n "$PROMPT_DIRTRIM" ]]; then
         unset -f _lp_shorten_path
