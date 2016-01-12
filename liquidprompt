@@ -73,8 +73,7 @@ if test -n "${BASH_VERSION-}"; then
     # like $PWD, VCS branch names...
     _lp_escape()
     {
-        arg="${1//\\/\\\\}"
-        echo -nE "${arg//\$/\\\$}"
+        echo -nE "${1//\\/\\\\}"
     }
 elif test -n "${ZSH_VERSION-}"; then
     _LP_SHELL_bash=false
@@ -1081,7 +1080,7 @@ prompt_on()
         fi
     fi
     if $_LP_SHELL_bash; then
-        shopt -s promptvars
+        shopt -u promptvars
         PROMPT_COMMAND=_lp_set_prompt
     else # zsh
         # Set options that affect PS1 evaluation
