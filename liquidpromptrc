@@ -58,6 +58,9 @@ LP_ENABLE_PROXY=0
 # Recommended value is 1
 LP_ENABLE_JOBS=1
 
+# Enable the returned error feature.
+LP_ENABLE_ERR=1
+
 # Enable the 'sudo credentials' feature.
 # Be warned that this may pollute the syslog if you don't have sudo
 # credentials, and the sysadmin will hate you.
