@@ -904,7 +904,7 @@ _lp_smart_mark()
         disabled) mark="$LP_MARK_DISABLED" ;;
         *)        mark="$LP_MARK_DEFAULT" ;;
     esac
-    echo -nE "${mark}"
+    echo -nE "${mark}${NO_COL}"
 }
 
 # insert a space on the right
@@ -1036,8 +1036,7 @@ _lp_set_prompt()
         fi
 
         # end of the prompt line: double spaces
-        # color around spaces to avoid background mismatch
-        LP_MARK="${LP_COLOR_MARK}$(_lp_sr "$(_lp_smart_mark $LP_VCS_TYPE)")${NO_COL}"
+        LP_MARK="$(_lp_sr "$(_lp_smart_mark $LP_VCS_TYPE)")"
 
         LP_OLD_PWD="LP:$PWD"
 
@@ -1069,7 +1068,7 @@ _lp_set_prompt()
         PS1+="${LP_VCS}"
 
         # add return code and prompt mark
-        PS1+="${LP_ERR}${LP_MARK_PREFIX}${LP_MARK}"
+        PS1+="${LP_ERR}${LP_MARK_PREFIX}${LP_COLOR_MARK}${LP_MARK}"
 
         # "invisible" parts
         # Get the current prompt on the fly and make it a title
