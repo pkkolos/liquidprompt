@@ -1101,7 +1101,7 @@ prompt_on()
         # incorrectly export it from their profile/bashrc (GitHub #450),
         # so we preventively UNexport it.
         # TODO: warn the user if it was exported
-        if (( ${BASH_VERSION%%.*} > 4 )) || [[ ${BASH_VERSION} > 4.2 ]]; then
+        if (( ${BASH_VERSINFO[0]:-0} > 4 || ( ${BASH_VERSINFO[0]:-0} == 4 && ${BASH_VERSINFO[1]:-0} >= 2 ) )); then
             # -g is only available since bash 4.2
             declare -g +x PROMPT_COMMAND
         fi
