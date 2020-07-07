@@ -99,10 +99,6 @@ _lp_bool()
     return $res
 }
 
-# Save $IFS as we want to restore the default value at the beginning of the
-# prompt function
-_LP_IFS="$IFS"
-
 #################
 # CONFIGURATION #
 #################
@@ -948,10 +944,6 @@ _lp_set_prompt()
     else
         LP_ERR=""
     fi
-
-    # Reset IFS to its default value to avoid strange behaviors
-    # (in case the user is playing with the value at the prompt)
-    local IFS="$_LP_IFS"
 
     # bash: execute the old prompt hook
     eval "$LP_OLD_PROMPT_COMMAND"
