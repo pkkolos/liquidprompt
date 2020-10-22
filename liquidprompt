@@ -42,9 +42,9 @@ if test -n "${BASH_VERSION-}"; then
     # Escape the given strings
     # Must be used for all strings injected in PS1 that may comes from remote sources,
     # like $PWD, VCS branch names...
-    _lp_escape()
+    __lp_escape()
     {
-        echo -nE "${1//\\/\\\\}"
+        ret="${1//\\/\\\\}"
     }
 elif test -n "${ZSH_VERSION-}"; then
     _LP_SHELL_bash=false
@@ -63,10 +63,10 @@ elif test -n "${ZSH_VERSION-}"; then
     _LP_PERCENT='%%'
     _LP_BACKSLASH="\\"
 
-    _lp_escape()
+    __lp_escape()
     {
-        arg="${1//\\/\\\\}"
-        echo -nE "${arg//\%/$_LP_PERCENT}"
+        local arg="${1//\\/\\\\}"
+        ret="${arg//\%/$_LP_PERCENT}"
     }
 
     # For ZSH, autoload required functions
@@ -513,7 +513,8 @@ _lp_shorten_path()
         fi
     fi
     # Escape special chars
-    LP_PWD="${LP_COLOR_PATH}$(_lp_escape "$ret")$NO_COL"
+    __lp_escape "$ret"
+    LP_PWD="${LP_COLOR_PATH}${ret}$NO_COL"
 }
 
 if (( LP_ENABLE_SHORTEN_PATH )); then
@@ -625,15 +626,16 @@ _lp_git_branch()
 
     \git rev-parse --is-inside-work-tree >/dev/null 2>&1 || return
 
-    local branch
+    local branch ret
     # Recent versions of Git support the --short option for symbolic-ref, but
     # not 1.7.9 (Ubuntu 12.04)
     if branch="$(\git symbolic-ref -q HEAD)"; then
-        _lp_escape "${branch#refs/heads/}"
+        __lp_escape "${branch#refs/heads/}"
+        lp_vcs_branch="$ret"
     else
         # In detached head state, use commit instead
         # No escape needed
-        \git rev-parse --short -q HEAD
+        lp_vcs_branch="$(\git rev-parse --short -q HEAD)"
     fi
 }
 
@@ -670,8 +672,8 @@ _lp_git_branch_color()
         fi
     fi
 
-    local branch
-    branch="$(_lp_git_branch)"
+    _lp_git_branch || return $?
+    local branch="$lp_vcs_branch"
     if [[ -n "$branch" ]]; then
         local end
         end="${LP_COLOR_CHANGES}$(_lp_git_head_status)${NO_COL}"
@@ -782,10 +784,13 @@ _lp_hg_branch()
     # We found an .hg folder, so we need to invoke hg and see if we're actually
     # in a repository.
 
-    local branch
-    branch="$(hg branch 2>/dev/null)"
-
-    (( $? == 0 )) && _lp_escape "$branch"
+    local branch ret
+    if branch="$(hg branch 2>/dev/null)"; then
+        __lp_escape "$branch"
+        lp_vcs_branch="$ret"
+    else
+        return 1
+    fi
 }
 
 # Set a color depending on the branch state:
@@ -796,9 +801,9 @@ _lp_hg_branch_color()
 {
     (( LP_ENABLE_HG )) || return
 
-    local branch
-    local ret
-    branch="$(_lp_hg_branch)"
+    _lp_hg_branch || return $?
+    local ret branch="$lp_vcs_branch"
+
     if [[ -n "$branch" ]]; then
 
         local has_untracked
