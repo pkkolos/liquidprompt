@@ -246,7 +246,7 @@ _lp_source_config()
     LP_ENABLE_FQDN=${LP_ENABLE_FQDN:-0}
     LP_ENABLE_SUDO=${LP_ENABLE_SUDO:-0}
     LP_ENABLE_ERR=${LP_ENABLE_ERR:-0}
-    LP_DISABLED_VCS_PATH="${LP_DISABLED_VCS_PATH-""}"
+    LP_DISABLED_VCS_PATHS=("${LP_DISABLED_VCS_PATHS[@]-}")
 
     LP_MARK_DEFAULT="${LP_MARK_DEFAULT:-$_LP_MARK_SYMBOL}"
     LP_MARK_PROXY="${LP_MARK_PROXY:-"↥"}"
@@ -372,7 +372,7 @@ else # root!
     LP_COLOR_PATH="${LP_COLOR_PATH_ROOT}"
     # Disable VCS info for all paths
     if (( ! LP_ENABLE_VCS_ROOT )); then
-        LP_DISABLED_VCS_PATH=/
+        LP_DISABLED_VCS_PATHS=("/")
         LP_MARK_DISABLED="$LP_MARK_DEFAULT"
     fi
 fi
@@ -647,12 +647,11 @@ _lp_jobcount_color() {
 
 _lp_are_vcs_enabled()
 {
-    [[ -z "$LP_DISABLED_VCS_PATH" ]] && return 0
-    $_LP_SHELL_zsh && setopt local_options && setopt sh_word_split
     local path
-    local IFS=:
-    for path in $LP_DISABLED_VCS_PATH; do
-        [[ "$PWD" == *"$path"* ]] && return 1
+    for path in "${LP_DISABLED_VCS_PATHS[@]}"; do
+        if [[ -n "$path" && "$PWD" == "$path"* ]]; then
+            return 1
+        fi
     done
     return 0
 }
