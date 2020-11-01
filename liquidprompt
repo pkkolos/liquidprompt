@@ -773,14 +773,15 @@ _lp_git_branch() {
 # Display additional information if HEAD is in merging, rebasing
 # or cherry-picking state
 _lp_git_head_status() {
-    local gitdir
-    gitdir="$(\git rev-parse --git-dir 2>/dev/null)"
+    local gitdir="${lp_vcs_root}/.git"
     if [[ -f "${gitdir}/MERGE_HEAD" ]]; then
-        echo " MERGING"
+        lp_vcs_head_status="MERGING"
     elif [[ -d "${gitdir}/rebase-apply" || -d "${gitdir}/rebase-merge" ]]; then
-        echo " REBASING"
+        lp_vcs_head_status="REBASING"
     elif [[ -f "${gitdir}/CHERRY_PICK_HEAD" ]]; then
-        echo " CHERRY-PICKING"
+        lp_vcs_head_status="CHERRY-PICKING"
+    else
+        return 1
     fi
 }
 
@@ -791,98 +792,97 @@ _lp_git_head_status() {
 #
 # Add the number of pending commits and the impacted lines.
 _lp_git_branch_color() {
-    (( LP_ENABLE_GIT )) || return
-
-    if [[ "$LP_ENABLE_OHMYGIT" != 0 ]]; then
+    if [[ "$LP_ENABLE_GIT" != 0 && "$LP_ENABLE_OHMYGIT" != 0 ]]; then
         local omg_prompt
         if omg_prompt="$(_omg_build_prompt)"; then
-            echo -n "$omg_prompt"
+            lp_vcs_branch_color="$omg_prompt"
             return
         fi
     fi
 
     _lp_git_branch || return $?
     local branch="$lp_vcs_branch"
-    if [[ -n "$branch" ]]; then
-        local end
-        end="${LP_COLOR_CHANGES}$(_lp_git_head_status)${NO_COL}"
 
-        if LC_ALL=C \git status --porcelain 2>/dev/null | \grep -q '^??'; then
-            end="$LP_COLOR_CHANGES$LP_MARK_UNTRACKED$end"
-        fi
-
-        # Show if there is a git stash
-        if \git rev-parse --verify -q refs/stash >/dev/null; then
-            end="$LP_COLOR_COMMITS$LP_MARK_STASH$end"
-        fi
-
-        local remote
-        remote="$(\git config --get branch.${branch}.remote 2>/dev/null)"
-
-        local has_commit=""
-        local commit_ahead
-        local commit_behind
-        if [[ -n "$remote" ]]; then
-            local remote_branch
-            remote_branch="$(\git config --get branch.${branch}.merge)"
-            if [[ -n "$remote_branch" ]]; then
-                remote_branch=${remote_branch/refs\/heads/refs\/remotes\/$remote}
-                commit_ahead="$(\git rev-list --count $remote_branch..HEAD 2>/dev/null)"
-                commit_behind="$(\git rev-list --count HEAD..$remote_branch 2>/dev/null)"
-                if [[ "$commit_ahead" -ne "0" && "$commit_behind" -ne "0" ]]; then
-                    has_commit="${LP_COLOR_COMMITS}+$commit_ahead${NO_COL}/${LP_COLOR_COMMITS_BEHIND}-$commit_behind${NO_COL}"
-                elif [[ "$commit_ahead" -ne "0" ]]; then
-                    has_commit="${LP_COLOR_COMMITS}$commit_ahead${NO_COL}"
-                elif [[ "$commit_behind" -ne "0" ]]; then
-                    has_commit="${LP_COLOR_COMMITS_BEHIND}-$commit_behind${NO_COL}"
-                fi
-            fi
-        fi
-
-        local ret
-        local shortstat # only to check for uncommitted changes
-        shortstat="$(LC_ALL=C \git diff --shortstat HEAD -- 2>/dev/null)"
-        if [[ -n "$shortstat" ]]; then
-            local u_stat # shorstat of *unstaged* changes
-            u_stat="$(LC_ALL=C \git diff --shortstat 2>/dev/null)"
-            u_stat=${u_stat/*changed, /} # removing "n file(s) changed"
-
-            local i_lines # inserted lines
-            if [[ "$u_stat" = *insertion* ]]; then
-                i_lines=${u_stat/ inser*}
-            else
-                i_lines=0
-            fi
-
-            local d_lines # deleted lines
-            if [[ "$u_stat" = *deletion* ]]; then
-                d_lines=${u_stat/*\(+\), }
-                d_lines=${d_lines/ del*/}
-            else
-                d_lines=0
-            fi
-
-            local has_lines
-            has_lines="+$i_lines/-$d_lines"
-
-            if [[ -n "$has_commit" ]]; then
-                # Changes to commit and commits to push
-                ret="${LP_COLOR_CHANGES}${branch}${NO_COL}${LP_MARK_VCS_OPEN}${LP_COLOR_DIFF}$has_lines${NO_COL},$has_commit${LP_MARK_VCS_CLOSE}"
-            else
-                ret="${LP_COLOR_CHANGES}${branch}${NO_COL}${LP_MARK_VCS_OPEN}${LP_COLOR_DIFF}$has_lines${NO_COL}${LP_MARK_VCS_CLOSE}" # changes to commit
-            fi
-        elif [[ -n "$has_commit" ]]; then
-            # some commit(s) to push
-            if [[ "$commit_behind" -gt "0" ]]; then
-                ret="${LP_COLOR_COMMITS_BEHIND}${branch}${NO_COL}${LP_MARK_VCS_OPEN}$has_commit${LP_MARK_VCS_CLOSE}"
-            else
-                ret="${LP_COLOR_COMMITS}${branch}${NO_COL}${LP_MARK_VCS_OPEN}$has_commit${LP_MARK_VCS_CLOSE}"
-            fi
-        else
-            ret="${LP_COLOR_UP}${branch}" # nothing to commit or push
-        fi
-        echo -nE "$ret$end"
+    local end="$NO_COL"
+    if _lp_git_head_status; then
+        end=" ${LP_COLOR_CHANGES}${lp_vcs_head_status}$end"
     fi
+
+    if LC_ALL=C \git status --porcelain 2>/dev/null | \grep -q '^??'; then
+        end="$LP_COLOR_CHANGES$LP_MARK_UNTRACKED$end"
+    fi
+
+    # Show if there is a git stash
+    if \git rev-parse --verify -q refs/stash >/dev/null; then
+        end="$LP_COLOR_COMMITS$LP_MARK_STASH$end"
+    fi
+
+    local remote
+    remote="$(\git config --get branch.${branch}.remote 2>/dev/null)"
+
+    local has_commit=""
+    local commit_ahead
+    local commit_behind
+    if [[ -n "$remote" ]]; then
+        local remote_branch
+        remote_branch="$(\git config --get branch.${branch}.merge)"
+        if [[ -n "$remote_branch" ]]; then
+            remote_branch=${remote_branch/refs\/heads/refs\/remotes\/$remote}
+            commit_ahead="$(\git rev-list --count $remote_branch..HEAD 2>/dev/null)"
+            commit_behind="$(\git rev-list --count HEAD..$remote_branch 2>/dev/null)"
+            if [[ "$commit_ahead" -ne "0" && "$commit_behind" -ne "0" ]]; then
+                has_commit="${LP_COLOR_COMMITS}+$commit_ahead${NO_COL}/${LP_COLOR_COMMITS_BEHIND}-$commit_behind${NO_COL}"
+            elif [[ "$commit_ahead" -ne "0" ]]; then
+                has_commit="${LP_COLOR_COMMITS}$commit_ahead${NO_COL}"
+            elif [[ "$commit_behind" -ne "0" ]]; then
+                has_commit="${LP_COLOR_COMMITS_BEHIND}-$commit_behind${NO_COL}"
+            fi
+        fi
+    fi
+
+    local ret
+    local shortstat # only to check for uncommitted changes
+    shortstat="$(LC_ALL=C \git diff --shortstat HEAD -- 2>/dev/null)"
+    if [[ -n "$shortstat" ]]; then
+        local u_stat # shorstat of *unstaged* changes
+        u_stat="$(LC_ALL=C \git diff --shortstat 2>/dev/null)"
+        u_stat=${u_stat/*changed, /} # removing "n file(s) changed"
+
+        local i_lines # inserted lines
+        if [[ "$u_stat" = *insertion* ]]; then
+            i_lines=${u_stat/ inser*}
+        else
+            i_lines=0
+        fi
+
+        local d_lines # deleted lines
+        if [[ "$u_stat" = *deletion* ]]; then
+            d_lines=${u_stat/*\(+\), }
+            d_lines=${d_lines/ del*/}
+        else
+            d_lines=0
+        fi
+
+        local has_lines
+        has_lines="+$i_lines/-$d_lines"
+
+        if [[ -n "$has_commit" ]]; then
+            # Changes to commit and commits to push
+            ret="${LP_COLOR_CHANGES}${branch}${NO_COL}${LP_MARK_VCS_OPEN}${LP_COLOR_DIFF}$has_lines${NO_COL},$has_commit${LP_MARK_VCS_CLOSE}"
+        else
+            ret="${LP_COLOR_CHANGES}${branch}${NO_COL}${LP_MARK_VCS_OPEN}${LP_COLOR_DIFF}$has_lines${NO_COL}${LP_MARK_VCS_CLOSE}" # changes to commit
+        fi
+    elif [[ -n "$has_commit" ]]; then
+        # some commit(s) to push
+        if [[ "$commit_behind" -gt "0" ]]; then
+            ret="${LP_COLOR_COMMITS_BEHIND}${branch}${NO_COL}${LP_MARK_VCS_OPEN}$has_commit${LP_MARK_VCS_CLOSE}"
+        else
+            ret="${LP_COLOR_COMMITS}${branch}${NO_COL}${LP_MARK_VCS_OPEN}$has_commit${LP_MARK_VCS_CLOSE}"
+        fi
+    else
+        ret="${LP_COLOR_UP}${branch}" # nothing to commit or push
+    fi
+    lp_vcs_branch_color="$ret$end"
 }
 
 # MERCURIAL #
@@ -908,49 +908,44 @@ _lp_hg_branch() {
 # - red if there is changes to commit
 # - TODO: yellow if there is some commits not pushed
 _lp_hg_branch_color() {
-    (( LP_ENABLE_HG )) || return
-
     _lp_hg_branch || return $?
     local ret branch="$lp_vcs_branch"
 
-    if [[ -n "$branch" ]]; then
-
-        local has_untracked
-        has_untracked=
-        if hg status -u 2>/dev/null | \grep -q '^?' >/dev/null; then
-            has_untracked="$LP_COLOR_CHANGES$LP_MARK_UNTRACKED"
-        fi
-
-        # Count local commits waiting for a push
-        #
-        # Unfortunately this requires contacting the remote, so this is always slow
-        # => disabled  https://github.com/nojhan/liquidprompt/issues/217
-        local -i commits
-        #commits=$(hg outgoing --no-merges ${branch} 2>/dev/null | \grep -c '\(^changeset\:\)')
-        commits=0
-
-        # Check if there is some uncommitted stuff
-        if [[ -z "$(hg status --quiet -n)" ]]; then
-            if (( commits > 0 )); then
-                # some commit(s) to push
-                ret="${LP_COLOR_COMMITS}${branch}${NO_COL}(${LP_COLOR_COMMITS}$commits${NO_COL})${has_untracked}${NO_COL}"
-            else
-                # nothing to commit or push
-                ret="${LP_COLOR_UP}${branch}${has_untracked}${NO_COL}"
-            fi
-        else
-            local has_lines
-            # Parse the last line of the diffstat-style output
-            has_lines="$(hg diff --stat 2>/dev/null | sed -n '$ s!^.*, \([0-9]*\) .*, \([0-9]*\).*$!+\1/-\2!p')"
-            if (( commits > 0 )); then
-                # Changes to commit and commits to push
-                ret="${LP_COLOR_CHANGES}${branch}${NO_COL}(${LP_COLOR_DIFF}$has_lines${NO_COL},${LP_COLOR_COMMITS}$commits${NO_COL})${has_untracked}${NO_COL}"
-            else
-                ret="${LP_COLOR_CHANGES}${branch}${NO_COL}(${LP_COLOR_DIFF}$has_lines${NO_COL})${has_untracked}${NO_COL}" # changes to commit
-            fi
-        fi
-        echo -nE "$ret"
+    local has_untracked
+    has_untracked=
+    if hg status -u 2>/dev/null | \grep -q '^?' >/dev/null; then
+        has_untracked="$LP_COLOR_CHANGES$LP_MARK_UNTRACKED"
     fi
+
+    # Count local commits waiting for a push
+    #
+    # Unfortunately this requires contacting the remote, so this is always slow
+    # => disabled  https://github.com/nojhan/liquidprompt/issues/217
+    local -i commits
+    #commits=$(hg outgoing --no-merges ${branch} 2>/dev/null | \grep -c '\(^changeset\:\)')
+    commits=0
+
+    # Check if there is some uncommitted stuff
+    if [[ -z "$(hg status --quiet -n)" ]]; then
+        if (( commits > 0 )); then
+            # some commit(s) to push
+            ret="${LP_COLOR_COMMITS}${branch}${NO_COL}${LP_MARK_VCS_OPEN}${LP_COLOR_COMMITS}$commits${NO_COL}${LP_MARK_VCS_CLOSE}${has_untracked}${NO_COL}"
+        else
+            # nothing to commit or push
+            ret="${LP_COLOR_UP}${branch}${has_untracked}${NO_COL}"
+        fi
+    else
+        local has_lines
+        # Parse the last line of the diffstat-style output
+        has_lines="$(hg diff --stat 2>/dev/null | sed -n '$ s!^.*, \([0-9]*\) .*, \([0-9]*\).*$!+\1/-\2!p')"
+        if (( commits > 0 )); then
+            # Changes to commit and commits to push
+            ret="${LP_COLOR_CHANGES}${branch}${NO_COL}${LP_MARK_VCS_OPEN}${LP_COLOR_DIFF}$has_lines${NO_COL},${LP_COLOR_COMMITS}$commits${NO_COL}${LP_MARK_VCS_CLOSE}${has_untracked}${NO_COL}"
+        else
+            ret="${LP_COLOR_CHANGES}${branch}${NO_COL}${LP_MARK_VCS_OPEN}${LP_COLOR_DIFF}$has_lines${NO_COL}${LP_MARK_VCS_CLOSE}${has_untracked}${NO_COL}" # changes to commit
+        fi
+    fi
+    lp_vcs_branch_color="$ret"
 }
 
 ##########
@@ -1038,11 +1033,10 @@ _lp_theme_prompt() {
 
     if _lp_find_vcs; then
         case "$lp_vcs_type" in
-            # git, git-svn, git-vcsh
-            git*)    LP_VCS="$(_lp_sl "$(_lp_git_branch_color)")";;
-            hg)      LP_VCS="$(_lp_sl "$(_lp_hg_branch_color)")";;
-            *)       LP_VCS="";;
+            git*)    _lp_git_branch_color;;
+            hg)      _lp_hg_branch_color;;
         esac
+        [[ -n "$lp_vcs_branch_color" ]] && LP_VCS=" $lp_vcs_branch_color"
     else
         LP_VCS=""
     fi
