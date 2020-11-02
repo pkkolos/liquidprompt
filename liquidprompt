@@ -309,12 +309,12 @@ lp_activate() {
     # If we are running in a terminal multiplexer, special title escapes
     if _lp_multiplexer; then
         (( LP_ENABLE_TITLE = LP_ENABLE_TITLE && LP_ENABLE_SCREEN_TITLE ))
-        LP_TITLE_OPEN="$(printf '\033k')"
+        LP_TITLE_OPEN=$'\Ek'
         # "\e\" but on bash \ must be escaped
-        LP_TITLE_CLOSE="$(printf '\033%s' "$_LP_BACKSLASH")"
+        LP_TITLE_CLOSE=$'\E'"$_LP_BACKSLASH"
     else
-        LP_TITLE_OPEN="$(printf '\e]0;')"
-        LP_TITLE_CLOSE="$(printf '\a')"
+        LP_TITLE_OPEN=$'\E]0;'
+        LP_TITLE_CLOSE=$'\a'
     fi
 
     ###############
