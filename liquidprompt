@@ -89,7 +89,7 @@ fi
 #    In practice, this is only color variables.
 # 2. Setup default values
 # 3. Load the configuration
-_lp_source_config() {
+__lp_source_config() {
     # TermInfo feature detection
     typeset -a af_colors ab_colors
     local af_color ab_color
@@ -274,11 +274,11 @@ lp_activate() {
         # Disable previous hooks as options that set them
         # may have changed
         {
-            add-zsh-hook -d precmd  _lp_set_prompt
+            add-zsh-hook -d precmd  __lp_set_prompt
         } >/dev/null
     fi
 
-    _lp_source_config
+    __lp_source_config
 
     # Disable feature if the tool is not installed
     _lp_require_tool()
@@ -369,8 +369,8 @@ lp_activate() {
 
     if (( LP_ENABLE_SHORTEN_PATH )); then
         if (( LP_PATH_KEEP == -1 )); then
-            # _lp_shorten_path becomes a noop
-            _lp_shorten_path() { : ; }
+            # __lp_shorten_path becomes a noop
+            __lp_shorten_path() { : ; }
             # Will never change
             LP_PWD="${LP_COLOR_PATH}${_LP_DIR_SYMBOL}$NO_COL"
         fi
@@ -379,8 +379,8 @@ lp_activate() {
         LP_PWD="${LP_COLOR_PATH}${_LP_PWD_SYMBOL}$NO_COL"
 
         if $_LP_SHELL_bash && [[ -n "$PROMPT_DIRTRIM" ]]; then
-            unset -f _lp_shorten_path
-            alias _lp_shorten_path=_lp_set_dirtrim
+            unset -f __lp_shorten_path
+            alias __lp_shorten_path=__lp_set_dirtrim
         fi
     fi
 
@@ -453,7 +453,7 @@ _lp_sb() {
 # * Show as much of the cwd path as possible, if shortened display a
 #   leading mark, such as ellipses, to indicate that part is missing
 # * show at least LP_PATH_KEEP leading dirs and current directory
-_lp_shorten_path() {
+__lp_shorten_path() {
     if (( ! LP_ENABLE_SHORTEN_PATH )); then
         # We are not supposed to come here often as this case is already
         # optimized at install time
@@ -520,7 +520,7 @@ _lp_shorten_path() {
 # of the displayed path (if "\w" is present in the PS1 var).
 # Liquid Prompt can calculate this number under two conditions, path shortening
 # must be disabled and PROMPT_DIRTRIM must be already set.
-_lp_set_dirtrim() {
+__lp_set_dirtrim() {
     local lp_pwd_tilde p
     __lp_pwd_tilde
     p="$lp_pwd_tilde"
@@ -1434,7 +1434,7 @@ _lp_theme_prompt() {
 # Construct the prompt #
 ########################
 
-_lp_set_prompt() {
+__lp_set_prompt() {
     # Display the return value of the last command, if different from zero
     # As this get the last returned code, it should be called first
     local -i lp_err=$?
@@ -1444,7 +1444,7 @@ _lp_set_prompt() {
 
     # if change of working directory
     if [[ "${LP_OLD_PWD-}" != "LP:$PWD" ]]; then
-        _lp_shorten_path   # set LP_PWD
+        __lp_shorten_path   # set LP_PWD
 
         _lp_theme_directory
 
@@ -1511,12 +1511,12 @@ prompt_on() {
 
         # Disable parameter/command expansion from PS1
         shopt -u promptvars
-        PROMPT_COMMAND=_lp_set_prompt
+        PROMPT_COMMAND=__lp_set_prompt
     else # zsh
         # Set options that affect PS1 evaluation
         # Disable parameter/command expansion; enable percent expansion
         setopt promptpercent nopromptbang nopromptsubst
-        add-zsh-hook precmd _lp_set_prompt
+        add-zsh-hook precmd __lp_set_prompt
     fi
 }
 
@@ -1527,7 +1527,7 @@ prompt_off() {
         eval "$_LP_OLD_SHOPT"
         PROMPT_COMMAND="$LP_OLD_PROMPT_COMMAND"
     else # zsh
-        add-zsh-hook -d precmd _lp_set_prompt
+        add-zsh-hook -d precmd __lp_set_prompt
         setopt ${_LP_OLD_SETOPT}
         (( ${#_LP_ZSH_PROMPT_THEME} )) && prompt $_LP_ZSH_PROMPT_THEME
     fi
@@ -1540,7 +1540,7 @@ prompt_OFF() {
         shopt -u promptvars
         PROMPT_COMMAND="$LP_OLD_PROMPT_COMMAND"
     else # zsh
-        add-zsh-hook -d precmd _lp_set_prompt
+        add-zsh-hook -d precmd __lp_set_prompt
         setopt promptpercent nopromptbang nopromptsubst
     fi
 }
