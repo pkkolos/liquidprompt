@@ -347,6 +347,18 @@ lp_activate() {
     # Default value for LP_PERM when LP_ENABLE_PERM is 0
     LP_PERM=${LP_MARK_PERM}   # without color
 
+    ###################
+    # CURRENT TIME    #
+    ###################
+
+    # LP_TIME is set colored, with a space on the right side
+    if (( LP_ENABLE_TIME )); then
+        # Never changes
+        LP_TIME="${LP_COLOR_TIME}${_LP_TIME_SYMBOL}${NO_COL} "
+    else
+        LP_TIME=""
+    fi
+
     ###############
     # Who are we? #
     ###############
@@ -972,18 +984,6 @@ _lp_sb()
     [[ -n "$1" ]] && echo -nE "${LP_MARK_SPACE}$1${LP_MARK_SPACE}"
 }
 
-###################
-# CURRENT TIME    #
-###################
-
-# LP_TIME is set colored, with a space on the right side
-if (( LP_ENABLE_TIME )); then
-    # Never changes
-    LP_TIME="${LP_COLOR_TIME}${_LP_TIME_SYMBOL}${NO_COL} "
-else
-    LP_TIME=""
-fi
-
 ########################
 # Construct the prompt #
 ########################
@@ -996,7 +996,7 @@ _lp_set_prompt()
     if (( LP_ENABLE_ERR && err != 0)); then
         LP_ERR="$LP_MARK_SPACE$LP_COLOR_ERR$err$NO_COL"
     else
-        LP_ERR=""
+        LP_ERR=
     fi
 
     # bash: execute the old prompt hook
