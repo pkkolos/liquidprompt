@@ -22,8 +22,8 @@
 test -z "$TERM" -o "x$TERM" = xdumb && return
 
 if test -n "${BASH_VERSION-}"; then
-    _LP_SHELL_bash=true
-    _LP_SHELL_zsh=false
+    _LP_SHELL_bash=1
+    _LP_SHELL_zsh=0
     _LP_OPEN_ESC="\["
     _LP_CLOSE_ESC="\]"
 
@@ -49,8 +49,8 @@ if test -n "${BASH_VERSION-}"; then
         ret="${1//\\/\\\\}"
     }
 elif test -n "${ZSH_VERSION-}"; then
-    _LP_SHELL_bash=false
-    _LP_SHELL_zsh=true
+    _LP_SHELL_bash=0
+    _LP_SHELL_zsh=1
     _LP_OPEN_ESC="%{"
     _LP_CLOSE_ESC="%}"
 
@@ -267,7 +267,7 @@ __lp_source_config() {
 }
 
 lp_activate() {
-    if $_LP_SHELL_zsh; then
+    if (( _LP_SHELL_zsh )); then
         # For ZSH, autoload required functions
         autoload -Uz add-zsh-hook
 
@@ -376,7 +376,7 @@ lp_activate() {
         # Will never change
         lp_path=$_LP_PWD_SYMBOL
 
-        if $_LP_SHELL_bash && [[ -n ${PROMPT_DIRTRIM-} ]]; then
+        if (( _LP_SHELL_bash )) && [[ -n ${PROMPT_DIRTRIM-} ]]; then
             __lp_path() {
                 __lp_set_dirtrim
             }
@@ -1507,7 +1507,7 @@ prompt_on() {
     if [[ -z "${LP_OLD_PS1-}" ]]; then
         LP_TAG=""
         LP_OLD_PS1="$PS1"
-        if $_LP_SHELL_bash; then
+        if (( _LP_SHELL_bash )); then
             LP_OLD_PROMPT_COMMAND="${PROMPT_COMMAND-}"
             _LP_OLD_SHOPT="$(shopt -p promptvars)"
         else # zsh
@@ -1530,7 +1530,7 @@ prompt_on() {
             done
         fi
     fi
-    if $_LP_SHELL_bash; then
+    if (( _LP_SHELL_bash )); then
         # Prevent some cases where the user shoots in his own foot.
         # PROMPT_COMMAND is not exported by default, but some users
         # incorrectly export it from their profile/bashrc (GitHub #450),
@@ -1555,7 +1555,7 @@ prompt_on() {
 # Come back to the old prompt
 prompt_off() {
     PS1=$LP_OLD_PS1
-    if $_LP_SHELL_bash; then
+    if (( _LP_SHELL_bash )); then
         eval "$_LP_OLD_SHOPT"
         PROMPT_COMMAND="$LP_OLD_PROMPT_COMMAND"
     else # zsh
@@ -1568,7 +1568,7 @@ prompt_off() {
 # Use an empty prompt: just the ❯ mark
 prompt_OFF() {
     PS1="❯ "
-    if $_LP_SHELL_bash; then
+    if (( _LP_SHELL_bash )); then
         shopt -u promptvars
         PROMPT_COMMAND="$LP_OLD_PROMPT_COMMAND"
     else # zsh
