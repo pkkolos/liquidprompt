@@ -1377,7 +1377,7 @@ _lp_title() {
 
     # Get the current computed prompt as pure text
     echo -nE "${_LP_OPEN_ESC}${LP_TITLE_OPEN}"
-    _lp_as_text "$1"
+    _lp_as_text "${1-}"
     echo -nE "${LP_TITLE_CLOSE}${_LP_CLOSE_ESC}"
 }
 
@@ -1590,7 +1590,7 @@ prompt_on() {
         else # zsh
             LP_OLD_PROMPT_COMMAND=""
             _LP_ZSH_PROMPT_THEME=""
-            if [[ -n "$prompt_theme" && "$prompt_theme" != off ]]; then
+            if [[ -n "${prompt_theme-}" && "$prompt_theme" != off ]]; then
                 _LP_ZSH_PROMPT_THEME="$prompt_theme"
                 # Disable the prompt to disable its precmd hook
                 prompt off
