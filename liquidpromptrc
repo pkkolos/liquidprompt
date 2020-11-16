@@ -106,6 +106,10 @@ LP_ENABLE_TITLE=1
 # Enable Title for screen and byobu
 LP_ENABLE_SCREEN_TITLE=1
 
+# Enable colored output
+# Recommended value is 1
+LP_ENABLE_COLOR=1
+
 # Specify an array of absolute paths in which all vcs will be disabled.
 # Ex: ("/root" "/home/me/large-remove-svn-repo")
 LP_DISABLED_VCS_PATHS=()
