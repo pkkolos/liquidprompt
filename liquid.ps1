@@ -42,11 +42,7 @@ LP_PS1="${LP_PS1}${LP_VCS}"
 LP_PS1="${LP_PS1}${LP_ERR}${LP_COLOR_MARK}${LP_MARK_PREFIX}${LP_MARK}"
 LP_TITLE="${LP_TITLE}${LP_MARK_SPACE}${LP_COLOR_MARK}${LP_MARK}"
 
-# "invisible" parts
 # Get the current prompt on the fly and make it a title
-LP_TITLE="$(_lp_title "${LP_TAG:-"$LP_TITLE"}")"
-
-# Insert it in the prompt
-LP_PS1="${LP_TITLE}${LP_PS1}"
+_lp_title "${LP_TAG:-"$LP_TITLE"}"
 
 # vim: set et sts=4 sw=4 tw=120 ft=sh:

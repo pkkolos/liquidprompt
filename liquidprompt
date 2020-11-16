@@ -371,7 +371,7 @@ lp_activate() {
 _lp_as_text() {
     # Remove all terminal sequences that we wrapped with $_LP_OPEN_ESC and
     # $_LP_CLOSE_ESC.
-    echo -nE "$1" | sed -r "s,$_LP_CLEAN_ESC,,g"
+    printf '%s' "$1" | sed -r "s,$_LP_CLEAN_ESC,,g"
 }
 
 # Store $2 (or $?) as a true/false value in variable named $1
@@ -1370,12 +1370,26 @@ _lp_hg_uncommitted_lines() {
 ##########
 
 _lp_title() {
-    (( LP_ENABLE_TITLE )) || return
+    (( LP_ENABLE_TITLE )) || return 2
 
-    # Get the current computed prompt as pure text
-    echo -nE "${_LP_OPEN_ESC}${LP_TITLE_OPEN}"
-    _lp_as_text "${1-}"
-    echo -nE "${LP_TITLE_CLOSE}${_LP_CLOSE_ESC}"
+    # Get the input as pure text
+    _lp_generated_title=$(_lp_as_text "${1-}")
+}
+
+_lp_raw_title() {
+    (( LP_ENABLE_TITLE )) || return 2
+
+    _lp_generated_title=${1-}
+}
+
+lp_title() {
+    (( LP_ENABLE_TITLE )) || return 2
+
+    if [[ -n ${1+x} ]]; then
+        _lp_manual_title=$1
+    else
+        unset _lp_manual_title
+    fi
 }
 
 #################
@@ -1525,12 +1539,8 @@ _lp_theme_prompt() {
         # add return code and prompt mark
         PS1+="${LP_ERR}${LP_MARK_PREFIX}${LP_COLOR_MARK}${LP_MARK}"
 
-        # "invisible" parts
         # Get the current prompt on the fly and make it a title
-        LP_TITLE="$(_lp_title "${LP_TAG:-"$PS1"}")"
-
-        # Insert it in the prompt
-        PS1="${LP_TITLE}${PS1}"
+        _lp_title "${LP_TAG:-"$PS1"}"
     else
         PS1=$LP_PS1
     fi
@@ -1562,6 +1572,10 @@ __lp_set_prompt() {
     fi
 
     _lp_theme_prompt
+
+    if (( LP_ENABLE_TITLE )); then
+        PS1="${_LP_OPEN_ESC}${LP_TITLE_OPEN}${_lp_manual_title:-${_lp_generated_title-${SHELL-}}}${LP_TITLE_CLOSE}${_LP_CLOSE_ESC}${PS1}"
+    fi
 }
 
 prompt_tag() {
