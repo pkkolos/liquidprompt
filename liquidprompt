@@ -1538,6 +1538,22 @@ lp_title() {
     fi
 }
 
+###################
+# CURRENT TIME    #
+###################
+
+_lp_time() {
+    (( LP_ENABLE_TIME )) || return 2
+
+    lp_time=${_LP_TIME_SYMBOL}
+}
+
+_lp_time_color() {
+    _lp_time || return "$?"
+
+    lp_time_color="${LP_COLOR_TIME}${_LP_TIME_SYMBOL}${NO_COL}"
+}
+
 #################
 # Default theme #
 #################
@@ -1585,9 +1601,8 @@ _lp_default_theme_activate() {
         LP_BRACKET_CLOSE="${LP_COLOR_IN_LOCAL}${LP_MARK_BRACKET_CLOSE}${NO_COL}"
     fi
 
-    if (( LP_ENABLE_TIME )); then
-        # Never changes
-        LP_TIME="${LP_COLOR_TIME}${_LP_TIME_SYMBOL}${NO_COL} "
+    if _lp_time_color; then
+        LP_TIME="${lp_time_color} "
     else
         LP_TIME=
     fi
