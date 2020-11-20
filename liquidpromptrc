@@ -55,8 +55,12 @@ LP_ENABLE_PERM=1
 LP_ENABLE_PROXY=0
 
 # Enable the jobs feature.
-# Recommended value is 0 (may be slow on some systems)
+# Recommended value is 1
 LP_ENABLE_JOBS=1
+
+# Enable the detached sessions feature.
+# Default value is 1
+LP_ENABLE_DETACHED_SESSIONS=1
 
 # Enable the returned error feature.
 LP_ENABLE_ERR=1
