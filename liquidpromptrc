@@ -62,9 +62,6 @@ LP_ENABLE_JOBS=1
 # Default value is 1
 LP_ENABLE_DETACHED_SESSIONS=1
 
-# Enable the returned error feature.
-LP_ENABLE_ERR=1
-
 # Enable the 'sudo credentials' feature.
 # Be warned that this may pollute the syslog if you don't have sudo
 # credentials, and the sysadmin will hate you.
@@ -113,6 +110,9 @@ LP_ENABLE_SCREEN_TITLE=1
 # Enable colored output
 # Recommended value is 1
 LP_ENABLE_COLOR=1
+
+# Show the error code of the last command if it was not 0
+LP_ENABLE_ERROR=1
 
 # Specify an array of absolute paths in which all vcs will be disabled.
 # Ex: ("/root" "/home/me/large-remove-svn-repo")
