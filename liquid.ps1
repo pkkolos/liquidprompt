@@ -40,7 +40,7 @@ LP_PS1="${LP_PS1}${LP_VCS}"
 
 # add return code and prompt mark
 LP_PS1="${LP_PS1}${LP_ERR}${LP_COLOR_MARK}${LP_MARK_PREFIX}${LP_MARK}"
-LP_TITLE="${LP_TITLE}${LP_MARK_SPACE}${LP_COLOR_MARK}${LP_MARK}"
+LP_TITLE="${LP_TITLE} ${LP_MARK}"
 
 # Get the current prompt on the fly and make it a title
 _lp_title "${LP_TAG:-"$LP_TITLE"}"

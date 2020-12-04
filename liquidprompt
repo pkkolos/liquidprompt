@@ -195,7 +195,6 @@ __lp_source_config() {
     LP_MARK_SHORTEN_PATH="${LP_MARK_SHORTEN_PATH:-" … "}"
     LP_MARK_PERM="${LP_MARK_PERM:-":"}"
     LP_MARK_PREFIX="${LP_MARK_PREFIX-" "}"
-    LP_MARK_SPACE="${LP_MARK_SPACE:-" "}"
     LP_MARK_VCS_OPEN="${LP_MARK_VCS_OPEN:-"("}"
     LP_MARK_VCS_CLOSE="${LP_MARK_VCS_CLOSE:-")"}"
     LP_MARK_X11="${LP_MARK_X11:-"@"}"
@@ -402,22 +401,6 @@ _lp_as_text() {
     printf '%s' "$1" | sed -r "s,$_LP_CLEAN_ESC,,g"
 }
 
-# Store $2 (or $?) as a true/false value in variable named $1
-# $? is propagated
-#   _lp_bool foo 5
-#   => foo=false
-#   _lp_bool foo 0
-#   => foo=true
-_lp_bool() {
-    local res=${2:-$?}
-    if (( res )); then
-        eval "$1=false"
-    else
-        eval "$1=true"
-    fi
-    return "$res"
-}
-
 __lp_is_function() {
     if (( _LP_SHELL_bash )); then
         [[ $(LC_ALL=C \type -t "$1") == function ]]
@@ -439,21 +422,6 @@ __lp_pwd_tilde() {
     # substitution differently
     local tilde="~"
     lp_pwd_tilde="${PWD/#$HOME/$tilde}"
-}
-
-# insert a space on the right
-_lp_sr() {
-    [[ -n "$1" ]] && echo -nE "$1${LP_MARK_SPACE}"
-}
-
-# insert a space on the left
-_lp_sl() {
-    [[ -n "$1" ]] && echo -nE "${LP_MARK_SPACE}$1"
-}
-
-# insert two space, before and after
-_lp_sb() {
-    [[ -n "$1" ]] && echo -nE "${LP_MARK_SPACE}$1${LP_MARK_SPACE}"
 }
 
 # Generates a terminal escape sequence to format the terminal.
