@@ -64,7 +64,7 @@ LP_ENABLE_DETACHED_SESSIONS=1
 
 # Enable the 'sudo credentials' feature.
 # Be warned that this may pollute the syslog if you don't have sudo
-# credentials, and the sysadmin will hate you.
+# credentials, and the sysadmin might hate you.
 LP_ENABLE_SUDO=1
 
 # Enable the VCS features with the root account.
@@ -83,9 +83,7 @@ LP_ENABLE_OHMYGIT=1
 # Recommended value is 1
 LP_ENABLE_HG=1
 
-# Show time of when the current prompt was displayed. (Must be enabled and
-# disabled in the config file and not after liquidprompt has already been
-# sourced.)
+# Show time of when the current prompt was displayed.
 LP_ENABLE_TIME=0
 
 # Display the virtualenv that is currently activated, if any
@@ -97,14 +95,10 @@ LP_ENABLE_VIRTUALENV=0
 LP_ENABLE_SCLS=0
 
 # Use the prompt as the title of the terminal window
-# The content is not customizable, the implementation is very basic,
-# and this may not work properly on exotic terminals, thus the
-# recommended value is 0
-# See LP_TITLE_OPEN and LP_TITLE_CLOSE to change escape characters to adapt this
-# feature to your specific terminal.
+# Recommended value is 0
 LP_ENABLE_TITLE=1
 
-# Enable Title for screen and byobu
+# Enable Title for screen, byobu, and tmux
 LP_ENABLE_SCREEN_TITLE=1
 
 # Enable colored output
