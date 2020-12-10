@@ -906,9 +906,9 @@ _lp_jobcount_color() {
 ######################
 
 _lp_are_vcs_enabled() {
-    local path
-    for path in "${LP_DISABLED_VCS_PATHS[@]}"; do
-        if [[ -n "$path" && "$PWD" == "$path"* ]]; then
+    local _path
+    for _path in "${LP_DISABLED_VCS_PATHS[@]}"; do
+        if [[ -n "$_path" && "$PWD" == "$_path"* ]]; then
             return 1
         fi
     done
