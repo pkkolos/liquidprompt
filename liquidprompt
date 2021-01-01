@@ -238,7 +238,8 @@ lp_activate() {
             add-zsh-hook -d precmd  __lp_set_prompt
         } >/dev/null
 
-        autoload -Uz compinit && compinit && compdef __lp_theme_zsh_complete lp_theme
+        # Enable the autocomplete if the autocomplete system is initialized.
+        __lp_is_function compdef && compdef __lp_theme_zsh_complete lp_theme
     fi
 
     # TermInfo feature detection
