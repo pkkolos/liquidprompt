@@ -27,6 +27,11 @@ LP_PATH_LENGTH=35
 # Recommended value is 2
 LP_PATH_KEEP=2
 
+# Treat the VCS root directory special, never shortening it and if configured,
+# coloring it as well
+# Default value is 1
+LP_PATH_VCS_ROOT=1
+
 # Determine if the hostname should always be displayed, even if not connecting
 # through network.
 # Defaults to 0 (do not display hostname when locally connected)
