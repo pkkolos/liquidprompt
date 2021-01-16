@@ -27,6 +27,14 @@ LP_PATH_LENGTH=35
 # Recommended value is 2
 LP_PATH_KEEP=2
 
+# Shortening path methods:
+#   truncate_chars_from_path_left
+#   truncate_chars_from_dir_middle
+#   truncate_chars_from_dir_right
+#   truncate_chars_to_unique_dir
+#   dirs_from_path_right
+LP_PATH_METHOD="truncate_chars_from_path_left"
+
 # Treat the VCS root directory special, never shortening it and if configured,
 # coloring it as well
 # Default value is 1
