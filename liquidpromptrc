@@ -27,6 +27,10 @@ LP_PATH_LENGTH=35
 # Recommended value is 2
 LP_PATH_KEEP=2
 
+# Keep a specific number of characters in each path.
+# Default value is 3
+LP_PATH_CHARACTER_KEEP=3
+
 # Shortening path methods:
 #   truncate_chars_from_path_left
 #   truncate_chars_from_dir_middle
