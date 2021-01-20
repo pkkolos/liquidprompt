@@ -32,7 +32,6 @@ if test -n "${BASH_VERSION-}"; then
     _LP_FQDN_SYMBOL="\H"
     _LP_TIME_SYMBOL="\t"
     _LP_MARK_SYMBOL='\$'
-    _LP_PWD_SYMBOL="\\w"
 
     _LP_PERCENT='%'    # must be escaped on zsh
     _LP_BACKSLASH='\\' # must be escaped on bash
@@ -58,7 +57,6 @@ elif test -n "${ZSH_VERSION-}"; then
     _LP_FQDN_SYMBOL="%M"
     _LP_TIME_SYMBOL="%*"
     _LP_MARK_SYMBOL='%(!.#.%%)'
-    _LP_PWD_SYMBOL="%~"
 
     _LP_PERCENT='%%'
     _LP_BACKSLASH="\\"
@@ -228,6 +226,14 @@ __lp_source_config() {
     LP_COLOR_IN_MULTIPLEXER=${LP_COLOR_IN_MULTIPLEXER:-$BOLD_BLUE}
     LP_COLOR_IN_LOCAL=${LP_COLOR_IN_LOCAL:-$WHITE}
     LP_COLOR_VIRTUALENV=${LP_COLOR_VIRTUALENV:-$CYAN}
+
+    # Deprecations and compatability shims
+
+    if [[ $LP_PATH_KEEP == "-1" ]]; then
+        echo "liquidprompt: LP_PATH_KEEP set to '-1' is deprecated. Update your config to set
+              LP_PATH_METHOD='truncate_to_last_dir' instead." >&2
+        LP_PATH_METHOD="truncate_to_last_dir"
+    fi
 }
 
 # Initialize features based on the user config.
