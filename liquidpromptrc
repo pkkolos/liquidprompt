@@ -36,7 +36,7 @@ LP_PATH_CHARACTER_KEEP=3
 #   truncate_chars_from_dir_middle
 #   truncate_chars_from_dir_right
 #   truncate_chars_to_unique_dir
-#   dirs_from_path_right
+#   truncate_to_last_dir
 LP_PATH_METHOD="truncate_chars_from_path_left"
 
 # Treat the VCS root directory special, never shortening it and if configured,
