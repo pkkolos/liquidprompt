@@ -51,8 +51,12 @@ LP_MARK_X11="@"
 # Set to a null string "" if you do not want color.
 
 # Current working directory
-LP_COLOR_PATH="$BOLD"             # as normal user
+LP_COLOR_PATH="$WHITE"            # as normal user
 LP_COLOR_PATH_ROOT="$BOLD_YELLOW" # as root
+LP_COLOR_PATH_SEPARATOR="$WHITE"
+LP_COLOR_PATH_SHORTENED="$WHITE"
+LP_COLOR_PATH_VCS_ROOT="$BOLD_BLUE"
+LP_COLOR_PATH_LAST_DIR="$BOLD_WHITE"
 
 # Color of the proxy mark
 LP_COLOR_PROXY="$BOLD_BLUE"
