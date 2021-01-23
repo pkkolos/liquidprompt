@@ -336,7 +336,7 @@ lp_activate() {
     ###############
 
     _lp_user
-    local -i user=$?
+    local -i user="$?"
 
     if (( user < 2 )); then  # if user is not root
         if (( LP_ENABLE_SUDO )); then
@@ -412,7 +412,10 @@ lp_terminal_format() {  # fg, bg, bold, underline, fallback_fg, fallback_bg
     lp_terminal_format=
     (( LP_ENABLE_COLOR )) || return 2
 
-    local af_color ab_color fg=$1 bg=${2:-"-1"} previous_af_color=${_lp_last_af_color-}
+    local af_color ab_color fg bg previous_af_color
+    fg=$1
+    bg=${2:-"-1"}
+    previous_af_color=${_lp_last_af_color-}
 
     lp_terminal_format=${_LP_OPEN_ESC}${_LP_TI_RESET}
 
@@ -488,7 +491,8 @@ __lp_theme_list() {
 __lp_theme_bash_complete() {
     COMPREPLY=()
     local -a lp_theme_list
-    local theme partial_theme=${2-}
+    local theme partial_theme
+    partial_theme=${2-}
 
     __lp_theme_list
 
@@ -1329,7 +1333,7 @@ _lp_git_untracked_files() {
 
 # Get the number of changed files.
 __lp_git_diff_shortstat_files() {  # diff_shortstat
-    local stat=$1
+    local stat="$1"
 
     if [[ "$stat" = *changed* ]]; then
         stat="${stat/ file*}"
@@ -1341,7 +1345,7 @@ __lp_git_diff_shortstat_files() {  # diff_shortstat
 
 # Get the number of changed lines.
 __lp_git_diff_shortstat_lines() {  # diff_shortstat
-    local stat=$1
+    local stat="$1"
 
     stat=${stat/*changed, /} # removing "n file(s) changed"
 
@@ -1607,7 +1611,7 @@ _lp_default_theme_activate() {
     LP_PERM=${LP_MARK_PERM}   # without color
 
     _lp_user
-    local -i user_type=$?
+    local -i user_type="$?"
 
     if (( user_type < 2 )); then  # if user is not root
         if (( LP_ENABLE_SUDO )); then
@@ -1762,7 +1766,7 @@ _lp_default_theme_prompt() {
 __lp_set_prompt() {
     # Display the return value of the last command, if different from zero
     # As this get the last returned code, it should be called first
-    local -i lp_error=$?
+    local -i lp_error="$?"
 
     # bash: execute the old prompt hook
     eval "$LP_OLD_PROMPT_COMMAND"
@@ -1875,7 +1879,7 @@ prompt_OFF() {
 }
 
 lp_theme() {
-    local theme=${1-}
+    local theme="${1-}"
 
     if [[ $theme == '--list' ]]; then
         local -a lp_theme_list
