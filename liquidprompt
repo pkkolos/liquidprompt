@@ -1049,6 +1049,12 @@ _lp_find_vcs() {
                 return 0
             fi
         done
+
+        if (( LP_ENABLE_GIT )) && [[ -f "$lp_vcs_root/.git" ]]; then
+            lp_vcs_type="git"
+            return 0
+        fi
+
         lp_vcs_root="${lp_vcs_root%/*}"
     done
 
