@@ -103,6 +103,9 @@ LP_ENABLE_HG=1
 # Show time of when the current prompt was displayed.
 LP_ENABLE_TIME=0
 
+# The formatting string used to display the current date and/or time.
+LP_TIME_FORMAT="%H:%M:%S"
+
 # Display the virtualenv that is currently activated, if any
 # Recommended value is 1
 LP_ENABLE_VIRTUALENV=0
