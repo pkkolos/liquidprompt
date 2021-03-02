@@ -27,7 +27,6 @@ if test -n "${BASH_VERSION-}"; then
     _LP_OPEN_ESC="\["
     _LP_CLOSE_ESC="\]"
 
-    _LP_USER_SYMBOL="\u"
     _LP_HOST_SYMBOL="\h"
     _LP_FQDN_SYMBOL="\H"
     _LP_MARK_SYMBOL='$'
@@ -51,7 +50,6 @@ elif test -n "${ZSH_VERSION-}"; then
     _LP_OPEN_ESC="%{"
     _LP_CLOSE_ESC="%}"
 
-    _LP_USER_SYMBOL="%n"
     _LP_HOST_SYMBOL="%m"
     _LP_FQDN_SYMBOL="%M"
     _LP_MARK_SYMBOL='%%'
@@ -858,7 +856,16 @@ _lp_username() {
         lp_username=''
         return 2
     elif (( LP_USER_ALWAYS )) || ! _lp_user; then
-        lp_username=${_LP_USER_SYMBOL}
+        lp_username=${USER:-${USERNAME:-${LOGNAME-}}}
+
+        if [[ -z $lp_username ]]; then
+            lp_username=$(id -nu 2>/dev/null)
+        fi
+
+        local ret
+        __lp_escape "$lp_username"
+        lp_username=$ret
+
         return 0
     else
         lp_username=''
