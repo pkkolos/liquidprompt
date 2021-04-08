@@ -26,6 +26,6 @@ LP_PS1+="${LP_ERR}${LP_MARK_PREFIX}${LP_COLOR_MARK}${LP_MARK}${LP_PS1_POSTFIX}"
 LP_TITLE+="${LP_ERR} ${LP_MARK}${LP_PS1_POSTFIX}"
 
 # Get the current prompt on the fly and make it a title
-_lp_title "$LP_TITLE"
+_lp_formatted_title "$LP_TITLE"
 
 # vim: set et sts=4 sw=4 tw=120 ft=sh:
