@@ -151,7 +151,8 @@ __lp_source_config() {
     LP_HOSTNAME_ALWAYS=${LP_HOSTNAME_ALWAYS:-0}
     LP_USER_ALWAYS=${LP_USER_ALWAYS:-1}
     LP_PS1=${LP_PS1-""}
-    LP_TAG=${LP_TAG-""}
+    LP_PS1_PREFIX=${LP_PS1_PREFIX-""}
+    LP_PS1_POSTFIX=${LP_PS1_POSTFIX-""}
 
     LP_ENABLE_PERM=${LP_ENABLE_PERM:-1}
     LP_ENABLE_SHORTEN_PATH=${LP_ENABLE_SHORTEN_PATH:-1}
@@ -185,8 +186,8 @@ __lp_source_config() {
     LP_MARK_BRACKET_OPEN="${LP_MARK_BRACKET_OPEN:-"["}"
     LP_MARK_BRACKET_CLOSE="${LP_MARK_BRACKET_CLOSE:-"]"}"
     LP_MARK_SHORTEN_PATH="${LP_MARK_SHORTEN_PATH:-" … "}"
+    LP_MARK_PREFIX="${LP_MARK_PREFIX:-" "}"
     LP_MARK_PERM="${LP_MARK_PERM:-":"}"
-    LP_MARK_PREFIX="${LP_MARK_PREFIX-" "}"
     LP_MARK_VCS_OPEN="${LP_MARK_VCS_OPEN:-"("}"
     LP_MARK_VCS_CLOSE="${LP_MARK_VCS_CLOSE:-")"}"
     LP_MARK_X11="${LP_MARK_X11:-"@"}"
@@ -1559,7 +1560,7 @@ _lp_default_theme_prompt_template() {
 
     if [[ -z "${LP_PS1-}" ]]; then
         # add time and jobs
-        PS1="${LP_TIME}${LP_JOBS}"
+        PS1="${LP_PS1_PREFIX}${LP_TIME}${LP_JOBS}"
         # add user, host and permissions colon
         PS1+="${LP_BRACKET_OPEN}${LP_USER}${LP_HOST}${LP_PERM}"
 
@@ -1571,10 +1572,10 @@ _lp_default_theme_prompt_template() {
         PS1+="${LP_VCS}"
 
         # add return code and prompt mark
-        PS1+="${LP_ERR}${LP_MARK_PREFIX}${LP_COLOR_MARK}${LP_MARK}"
+        PS1+="${LP_ERR}${LP_MARK_PREFIX}${LP_COLOR_MARK}${LP_MARK}${LP_PS1_POSTFIX}"
 
         # Get the current prompt on the fly and make it a title
-        _lp_title "${LP_TAG:-"$PS1"}"
+        _lp_title "$PS1"
     else
         PS1=$LP_PS1
     fi
@@ -1618,11 +1619,11 @@ __lp_set_prompt() {
 }
 
 prompt_tag() {
-    export LP_TAG="$1"
-}
-
-prompt_fulleval() {
-    LP_OLD_PWD=""
+    if [[ -n "${1-}" ]]; then
+        export LP_PS1_PREFIX="$1 "
+    else
+        export LP_PS1_PREFIX=
+    fi
 }
 
 # Activate Liquid Prompt
@@ -1632,7 +1633,6 @@ prompt_on() {
 
     # if Liquid Prompt has not been already set
     if [[ -z "${LP_OLD_PS1-}" ]]; then
-        LP_TAG=""
         LP_OLD_PS1="$PS1"
         if (( _LP_SHELL_bash )); then
             LP_OLD_PROMPT_COMMAND="${PROMPT_COMMAND-}"
