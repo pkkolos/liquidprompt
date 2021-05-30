@@ -1578,7 +1578,7 @@ _lp_hg_head_status() {
 _lp_hg_stash_count() {
     local shelves count
     shelves="$(\hg shelve --list 2>/dev/null; printf x)"
-    _lp_line_count "${shelves%x}"
+    __lp_line_count "${shelves%x}"
     lp_vcs_stash_count="$count"
     (( lp_vcs_stash_count ))
 }
