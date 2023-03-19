@@ -5,45 +5,24 @@
 # If you want to use different themes and features,
 # you can load the corresponding files here:
 source ~/.config/oh-my-git/prompt.sh
-#source ~/.config/liquidprompt/liquid.theme
-#LP_PS1_FILE=~/.config/liquidprompt/liquid.ps1
 
-#############
-# BEHAVIOUR #
-#############
+# The formatting string passed to date(1) using formatting from
+# strftime(3) used to display the current date and/or time.
+LP_TIME_FORMAT="%H:%M:%S"
 
-# Use the shorten path feature if the path is too long to fit in the prompt line.
-#
-# Default value is 1
-#
-LP_ENABLE_SHORTEN_PATH=1
-
-# The maximum percentage of the terminal width used to display the path before removing
-# the center portion of the path and replacing with LP_MARK_SHORTEN_PATH.
-# LP_ENABLE_SHORTEN_PATH must be enabled to have any effect.
-#
-# Note:
-# LP_PATH_KEEP and LP_PATH_METHOD have higher precedence over this option.
-# Important path parts, including directories saved by LP_PATH_KEEP, LP_PATH_VCS_ROOT, and
-# the last directory, will always be displayed, even if the path does not fit in the maximum length.
-#
-# Default value is 35
-#
+# The maximum percentage of the screen width used to display the path before
+# removing the center portion of the path and replacing with '...'.
+# Recommended value is 35
 LP_PATH_LENGTH=35
 
-# The number of directories (counting ‘/’) to display at the beginning of a shortened path.
-# Set to 1, will display only root. Set to 0, will keep nothing from the beginning of the path.
-# LP_ENABLE_SHORTEN_PATH must be enabled to have any effect.
-#
-# Default value is 2
-#
+# The number of directories (including '/') to keep at the beginning of a
+# shortened path.
+# Recommended value is 2
 LP_PATH_KEEP=2
 
 # The number of characters to save at the start and possibly the end of a
 # directory name when shortening the path.
-#
-# Default value is 3
-#
+# Recommended value is 3
 LP_PATH_CHARACTER_KEEP=3
 
 # Sets the method used for shortening the path display when it exceeds
@@ -77,188 +56,79 @@ LP_PATH_CHARACTER_KEEP=3
 # Only the minimum number of directories needed
 # to fit inside LP_PATH_LENGTH will be shortened.
 # LP_ENABLE_SHORTEN_PATH must be enabled to have any effect.
-#
-# Default value is "truncate_chars_from_path_left"
-#
 LP_PATH_METHOD="truncate_chars_from_path_left"
 
 # Display the root directory of the current VCS repository with special formatting,
 # set by LP_COLOR_PATH_VCS_ROOT. If LP_ENABLE_SHORTEN_PATH is enabled, also prevent
 # the path shortening from shortening or hidding the VCS root directory.
-#
-# Default value is 1
-#
 LP_PATH_VCS_ROOT=1
 
-# Determine when the hostname should be displayed. Valid values are:
-#    0 - show the hostname, except when locally connected
-#    1 - always show the hostname
-#   -1 - never show the hostname
-#
-# Default value is 0
-#
+# Determine if the hostname should always be displayed, even if not connecting
+# through network.
+# Defaults to 0 (do not display hostname when locally connected)
+# set to 1 if you want to always see the hostname
+# set to -1 if you want to never see the hostname
 LP_HOSTNAME_ALWAYS=0
 
-# Use the fully qualified domain name (FQDN) instead of the short hostname when
-# the hostname is displayed.
-#
-# Default value is 0
-#
-LP_ENABLE_FQDN=0
+LP_HOSTNAME_METHOD="short"
 
-# Determine when the username should be displayed. Valid values are:
-#    0 - show the username, except when the user is the login user
-#    1 - always show the username
-#   -1 - never show the username
-#
-# Default value is 1
-#
+# When to display the user name:
+# 1: always display the user name
+# 0: hide the logged user (always display different users)
+# -1: never display the user name
 LP_USER_ALWAYS=0
 
-# Display a colored LP_MARK_PERM in the prompt to show when the user
-# does not have write permission to the current directory.
-#
-# Default value is 1
-#
+# Use the permissions feature and display a red ':' before the prompt to show
+# when you don't have write permission to the current directory.
 LP_ENABLE_PERM=1
 
-# Display a LP_MARK_PROXY mark when an HTTP proxy is detected.
-#
-# Default value is 1
-#
+# Use the shorten path feature if the path is too long to fit in the prompt line.
+LP_ENABLE_SHORTEN_PATH=1
+
+# Enable the directory stack support.
+LP_ENABLE_DIRSTACK=0
+
+# Enable the proxy detection feature.
 LP_ENABLE_PROXY=0
 
-# Display the number of running and sleeping shell jobs.
-#
-# Default value is 1
-#
+# Enable the jobs feature.
 LP_ENABLE_JOBS=1
 
-# Display the number of detached multiplexer sessions.
-# Will be disabled if neither screen nor tmux are found.
-#
-# Default value is 1
-#
+# Enable the detached sessions feature.
 LP_ENABLE_DETACHED_SESSIONS=1
 
-# Check if the user has valid sudo credentials, and display an indicating mark or color.
-# Will be disabled if sudo is not found.
-#
-# Warning:
-# Each evocation of sudo by default writes to the syslog, and this will run sudo once each prompt.
-# This is likely to make your sysadmin hate you.
-#
-# Default value is 0
-#
-LP_ENABLE_SUDO=1
-
-# Enable VCS features when running as root. This is disabled by default for security.
-#
-# Default value is 0
-#
-LP_ENABLE_VCS_ROOT=0
-
-# Display VCS information inside Git repositories.
-# Will be disabled if git is not found.
-#
-# Default value is 1
-#
+# Enable the Git special features.
 LP_ENABLE_GIT=1
 
-# Display the Oh-My-Git information inside Git repositories instead of the default.
-#
-# Default value is 0
-#
+# Use Oh-My-Git instead of the Liquid Prompt git information.
 LP_ENABLE_OHMYGIT=1
 
-# Display VCS information inside Mercurial repositories.
-# Will be disabled if hg is not found.
-#
-# Default value is 1
-#
-LP_ENABLE_HG=1
-
-# Displays the time at which the prompt was shown.
-#
-# Default value is 0
-#
+# Show time of when the current prompt was displayed.
 LP_ENABLE_TIME=0
 
-# The formatting string passed to date(1) using formatting from
-# strftime(3) used to display the current date and/or time.
-#
-# Default value is "%H:%M:%S"
-#
-LP_TIME_FORMAT="%H:%M:%S"
+# Enable the VCS features with the root account.
+# Recommended value is 0
+LP_ENABLE_VCS_ROOT=0
 
-# Display the currently activated Python or Conda virtual environment.
-#
-# Default value is 1
-#
-LP_ENABLE_VIRTUALENV=0
-
-# Display the currently activated RVM or RBENV virtual environment.
-#
-# Default value is 1
-#
-LP_ENABLE_RUBY_VENV=0
-
-# An array of single letter switches to customize the RVM prompt output.
-# Will only have an effect if LP_ENABLE_RUBY_VENV is enabled and you
-# are using RVM (i.e. no effect with RBENV).
-#
-# Default value is (i v g s)
-#
-LP_RUBY_RVM_PROMPT_OPTIONS=(i v g s)
-
-# Display the currently activated Red Hat Software Collection.
-#
-# Default value is 1
-#
-LP_ENABLE_SCLS=0
-
-# Set the terminal title to part or all of the prompt string, depending on the theme.
-# Must be enabled to be able to set the manual title with lp_title().
-#
-# Warning:
-# This may not work properly on exotic terminals.
-#
-# Default value is 0
-#
+# Use the prompt as the title of the terminal window
 LP_ENABLE_TITLE=1
 
-# Set the terminal title while in a terminal multiplexer.
-# LP_ENABLE_TITLE must be enabled to have any effect.
-#
-# Default value is 0
-#
+# Enable Title for screen, byobu, and tmux
 LP_ENABLE_SCREEN_TITLE=1
 
+# Enable the 'sudo credentials' feature.
+# Be warned that this may pollute the syslog if you don't have sudo
+# credentials, and the sysadmin might hate you.
+LP_ENABLE_SUDO=1
+
 # Use terminal formatting when displaying the prompt.
-#
-# Default value is 1
-#
 LP_ENABLE_COLOR=1
 
-# Display the last command error code if it is not 0.
-#
-# Default value is 1
-#
+# Show the error code of the last command if it was not 0
 LP_ENABLE_ERROR=1
 
-# An array of absolute directory paths where VCS features will be disabled.
-# Generally this would be used for repositories that are large and slow,
-# where generating VCS information for the prompt would impact prompt responsiveness.
-#
-# Any subdirectory under the input directory is also disabled, so setting “/repos”
-# would disable VCS display when the current directory is “/repos/a-repo”.
-# Setting ("/") would disable VCS display completely.
-#
-# An example value would be:
-# LP_DISABLED_VCS_PATHS=("/a/svn/repo" "/home/me/my/large/repo")
-#
-# Default value is ()
-#
+# Specify an array of absolute paths in which all vcs will be disabled.
+# Ex: ("/root" "/home/me/large-remove-svn-repo")
 LP_DISABLED_VCS_PATHS=()
 
 # vim: set et sts=4 sw=4 tw=120 ft=sh:

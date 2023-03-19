@@ -19,7 +19,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Issue #161: do not load if not an interactive shell
-test -z "$TERM" -o "x$TERM" = xdumb && return
+# Do not exit if '--no-activate' flag was passed, as it overrides this check
+[ "x${-##*i}" = "x$-" ] || [ -z "${TERM-}" ] || [ "x${TERM-}" = xdumb ] || [ "x${TERM-}" = xunknown ] && [ "x${1-}" != "x--no-activate" ] && return
 
 if test -n "${BASH_VERSION-}"; then
     _LP_SHELL_bash=1
@@ -29,15 +30,34 @@ if test -n "${BASH_VERSION-}"; then
 
     _LP_MARK_SYMBOL='$'
 
-    # Sed expression using extended regexp to match terminal
-    # escape sequences with their wrappers
-    _LP_CLEAN_ESC='\\\[([^\]+|\\[^]])*\\\]'
-
     # Escape the given strings
     # Must be used for all strings injected in PS1 that may comes from remote sources,
     # like $PWD, VCS branch names...
     __lp_escape() {
         ret="${1//\\/\\\\}"
+        if shopt -q promptvars ; then
+            ret="${ret//\$/\\\$}"
+            ret="${ret//\`/\\\`}"
+        fi
+    }
+
+    __lp_strip_escapes() {
+        if ! shopt -q extglob ; then
+            local _lp_no_extglob=true
+            shopt -s extglob
+        fi
+
+        ret="${1//"${_LP_OPEN_ESC}"!(*"${_LP_CLOSE_ESC}"*)"${_LP_CLOSE_ESC}"}"
+
+        if [[ -n ${_lp_no_extglob-} ]]; then
+            shopt -u extglob
+        fi
+
+        ret="${ret//\\\\/\\}"
+        if shopt -q promptvars ; then
+            ret="${ret//\\\$/\$}"
+            ret="${ret//\\\`/\`}"
+        fi
     }
 elif test -n "${ZSH_VERSION-}"; then
     _LP_SHELL_bash=0
@@ -47,10 +67,29 @@ elif test -n "${ZSH_VERSION-}"; then
 
     _LP_MARK_SYMBOL='%%'
 
-    _LP_CLEAN_ESC='%\{([^%]+|%[^}])*%\}'
-
     __lp_escape() {
-        ret="${1//\%/%%}"
+        ret="${1//\\/\\\\}"
+        ret="${ret//\%/%%}"
+        if [[ -o promptbang ]]; then
+            ret="${ret//!/!!}"
+        fi
+        if [[ -o promptsubst ]]; then
+            ret="${ret//\$/\\\$}"
+            ret="${ret//\`/\\\`}"
+        fi
+    }
+
+    __lp_strip_escapes() {
+        ret="${(S)1//"${_LP_OPEN_ESC}"*"${_LP_CLOSE_ESC}"}"
+        ret="${ret//\\\\/\\}"
+        ret="${ret//\%\%/%}"
+        if [[ -o promptbang ]]; then
+            ret="${ret//!!/!}"
+        fi
+        if [[ -o promptsubst ]]; then
+            ret="${ret//\\\$/\$}"
+            ret="${ret//\\\`/\`}"
+        fi
     }
 else
     echo "liquidprompt: shell not supported" >&2
@@ -63,7 +102,7 @@ fi
 
 # Load the user configuration and setup defaults.
 __lp_source_config() {
-    local lp_terminal_format af_color= ab_color=
+    local lp_terminal_format af_color='' ab_color=''
 
     # Colors: variables are local so they will have a value only
     # during config loading and will not conflict with other values
@@ -116,16 +155,6 @@ __lp_source_config() {
     # NO_COL is special: it will be used at runtime, not just during config loading
     NO_COL="${_LP_OPEN_ESC}${_LP_TI_RESET-}${_LP_CLOSE_ESC}"
 
-    local configfile
-
-    # System config
-    configfile="/etc/xdg/liquidprompt/liquidpromptrc"
-    [[ -f "$configfile" ]] && source "$configfile"
-
-    # Local config
-    configfile="${XDG_CONFIG_HOME:-"$HOME/.config"}/liquidprompt/liquidpromptrc"
-    [[ -f "$configfile" ]] && source "$configfile"
-
     # Default values (globals)
     LP_TIME_FORMAT=${LP_TIME_FORMAT:-"%H:%M:%S"}
     LP_PATH_LENGTH=${LP_PATH_LENGTH:-35}
@@ -134,29 +163,24 @@ __lp_source_config() {
     LP_PATH_METHOD=${LP_PATH_METHOD:-truncate_chars_from_path_left}
     LP_PATH_VCS_ROOT=${LP_PATH_VCS_ROOT:-1}
     LP_HOSTNAME_ALWAYS=${LP_HOSTNAME_ALWAYS:-0}
+    LP_HOSTNAME_METHOD=${LP_HOSTNAME_METHOD:-short}
     LP_USER_ALWAYS=${LP_USER_ALWAYS:-1}
-    LP_PS1=${LP_PS1-""}
-    LP_PS1_PREFIX=${LP_PS1_PREFIX-""}
-    LP_PS1_POSTFIX=${LP_PS1_POSTFIX-""}
+    LP_PS1=${LP_PS1:-""}
+    LP_PS1_PREFIX=${LP_PS1_PREFIX:-""}
+    LP_PS1_POSTFIX=${LP_PS1_POSTFIX:-""}
 
     LP_ENABLE_PERM=${LP_ENABLE_PERM:-1}
     LP_ENABLE_SHORTEN_PATH=${LP_ENABLE_SHORTEN_PATH:-1}
+    LP_ENABLE_DIRSTACK=${LP_ENABLE_DIRSTACK:-1}
     LP_ENABLE_PROXY=${LP_ENABLE_PROXY:-1}
     LP_ENABLE_JOBS=${LP_ENABLE_JOBS:-1}
     LP_ENABLE_DETACHED_SESSIONS=${LP_ENABLE_DETACHED_SESSIONS:-1}
     LP_ENABLE_GIT=${LP_ENABLE_GIT:-1}
     LP_ENABLE_OHMYGIT=${LP_ENABLE_OHMYGIT:-0}
-    LP_ENABLE_HG=${LP_ENABLE_HG:-1}
     LP_ENABLE_TIME=${LP_ENABLE_TIME:-0}
-    LP_ENABLE_VIRTUALENV=${LP_ENABLE_VIRTUALENV:-1}
-    LP_ENABLE_RUBY_VENV=${LP_ENABLE_RUBY_VENV:-1}
-    LP_RUBY_RVM_PROMPT_OPTIONS=( ${LP_RUBY_RVM_PROMPT_OPTIONS[@]+"${LP_RUBY_RVM_PROMPT_OPTIONS[@]}"} )
-    [[ ${#LP_RUBY_RVM_PROMPT_OPTIONS[@]} == 0 ]] && LP_RUBY_RVM_PROMPT_OPTIONS=(i v g s)
-    LP_ENABLE_SCLS=${LP_ENABLE_SCLS:-1}
     LP_ENABLE_VCS_ROOT=${LP_ENABLE_VCS_ROOT:-0}
     LP_ENABLE_TITLE=${LP_ENABLE_TITLE:-0}
     LP_ENABLE_SCREEN_TITLE=${LP_ENABLE_SCREEN_TITLE:-0}
-    LP_ENABLE_FQDN=${LP_ENABLE_FQDN:-0}
     LP_ENABLE_SUDO=${LP_ENABLE_SUDO:-0}
     LP_ENABLE_COLOR=${LP_ENABLE_COLOR:-1}
     LP_ENABLE_ERROR=${LP_ENABLE_ERROR:-1}
@@ -164,7 +188,6 @@ __lp_source_config() {
 
     LP_MARK_DEFAULT="${LP_MARK_DEFAULT:-$_LP_MARK_SYMBOL}"
     LP_MARK_PROXY="${LP_MARK_PROXY:-"↥"}"
-    LP_MARK_HG="${LP_MARK_HG:-"☿"}"
     LP_MARK_SVN="${LP_MARK_SVN:-"‡"}"
     LP_MARK_GIT="${LP_MARK_GIT:-"±"}"
     LP_MARK_VCSH="${LP_MARK_VCSH:-"|"}"
@@ -179,6 +202,8 @@ __lp_source_config() {
     LP_MARK_VCS_OPEN="${LP_MARK_VCS_OPEN:-"("}"
     LP_MARK_VCS_CLOSE="${LP_MARK_VCS_CLOSE:-")"}"
     LP_MARK_X11="${LP_MARK_X11:-"@"}"
+    LP_MARK_DIRSTACK="${LP_MARK_DIRSTACK:-"⚞"}"
+    LP_MARK_JOBS_SEPARATOR="${LP_MARK_JOBS_SEPARATOR:-"/"}"
 
     LP_COLOR_PATH=${LP_COLOR_PATH:-$NO_COL}
     LP_COLOR_PATH_ROOT=${LP_COLOR_PATH_ROOT:-$BOLD_YELLOW}
@@ -214,34 +239,45 @@ __lp_source_config() {
     LP_COLOR_TIME=${LP_COLOR_TIME:-$BLUE}
     LP_COLOR_IN_MULTIPLEXER=${LP_COLOR_IN_MULTIPLEXER:-$BOLD_BLUE}
     LP_COLOR_IN_LOCAL=${LP_COLOR_IN_LOCAL:-$WHITE}
-    LP_COLOR_VIRTUALENV=${LP_COLOR_VIRTUALENV:-$CYAN}
 
-    # Deprecations and compatability shims
+    if [[ ${1-} == --no-config ]]; then
+        return
+    fi
+
+    local configfile
+
+    # System config
+    configfile="/etc/xdg/liquidprompt/liquidpromptrc"
+    [[ -f "$configfile" ]] && source "$configfile"
+
+    # Local config
+    configfile="${XDG_CONFIG_HOME:-"$HOME/.config"}/liquidprompt/liquidpromptrc"
+    [[ -f "$configfile" ]] && source "$configfile"
+
+    # Deprecations and compatibility shims
 
     if [[ $LP_PATH_KEEP == "-1" ]]; then
         echo "liquidprompt: LP_PATH_KEEP set to '-1' is deprecated. Update your config to set
               LP_PATH_METHOD='truncate_to_last_dir' instead." >&2
         LP_PATH_METHOD="truncate_to_last_dir"
     fi
+
+    if [[ ${LP_ENABLE_FQDN-} == 1 ]]; then
+        echo "liquidprompt: LP_ENABLE_FQDN is deprecated. Update your config to set LP_HOSTNAME_METHOD=full
+              or LP_HOSTNAME_METHOD=fqdn instead." >&2
+        LP_HOSTNAME_METHOD="full"
+    fi
 }
 
 # Initialize features based on the user config.
 lp_activate() {
-    if (( _LP_SHELL_bash )); then
-        complete -F __lp_theme_bash_complete lp_theme
-    else # zsh
+    if (( _LP_SHELL_zsh )); then
         # For ZSH, autoload required functions
         autoload -Uz add-zsh-hook
-
-        # Disable previous hooks as options that set them
-        # may have changed
-        {
-            add-zsh-hook -d precmd  __lp_set_prompt
-        } >/dev/null
-
-        # Enable the autocomplete if the autocomplete system is initialized.
-        __lp_is_function compdef && compdef __lp_theme_zsh_complete lp_theme
     fi
+
+    # Disable hooks that we don't need if features will be disabled.
+    __lp_disable_hooks
 
     # TermInfo feature detection
     _lp_af_colors=() _lp_ab_colors=()
@@ -284,37 +320,22 @@ lp_activate() {
         fi
     fi
 
-    __lp_source_config
+    __lp_source_config "$@"
 
     # Disable feature if the tool is not installed
     _lp_require_tool()
     {
-        (( LP_ENABLE_$1 )) && { command -v "$2" >/dev/null || eval LP_ENABLE_$1=0 ; }
+        # zsh does not allow quoting here.
+        (( LP_ENABLE_$1 )) && { command -v "$2" >/dev/null || eval "LP_ENABLE_$1=0" ; }
     }
 
+    _lp_require_tool TIME date
     _lp_require_tool GIT git
-    _lp_require_tool HG hg
 
     _LP_ENABLED_VCSS=()
     (( LP_ENABLE_GIT )) && _LP_ENABLED_VCSS+=(git)
-    (( LP_ENABLE_HG )) && _LP_ENABLED_VCSS+=(hg)
 
     unset -f _lp_require_tool
-
-    # LP_ENABLE_RUBY_VENV depends either from rvm or rbenv. Thus we cannot
-    # directly use _lp_require_tool for it.
-    # Also, to avoid to check twice which is the current ruby virtual env
-    # program in use, we set here an internal variable holding its name if we
-    # detect one of them.
-    if (( LP_ENABLE_RUBY_VENV )) ; then
-        if command -v rvm-prompt >/dev/null ; then
-            _LP_RUBY_VENV_PROGRAM=rvm
-        elif command -v rbenv >/dev/null ; then
-            _LP_RUBY_VENV_PROGRAM=rbenv
-        else
-            LP_ENABLE_RUBY_VENV=0
-        fi
-    fi
 
     if (( LP_ENABLE_DETACHED_SESSIONS )); then
         command -v screen >/dev/null ; _LP_ENABLE_SCREEN=$(( ! $? ))
@@ -333,6 +354,8 @@ lp_activate() {
         LP_TITLE_OPEN=$'\E]0;'
         LP_TITLE_CLOSE=$'\a'
     fi
+
+    [[ "_${TERM-}" == _linux* ]] && LP_ENABLE_TITLE=0
 
     ###############
     # Who are we? #
@@ -364,41 +387,15 @@ lp_activate() {
         LP_COLOR_USER=$LP_COLOR_USER_ROOT
     fi
 
-    #################
-    # Where are we? #
-    #################
-
-    if [[ -n ${_LP_THEME_ACTIVATE_FUNCTION-} ]]; then
-        # Reactivate current theme
-        "$_LP_THEME_ACTIVATE_FUNCTION"
-        prompt_on
-    else
-        # Set default theme if no theme set
-        lp_theme default
-    fi
+    _lp_default_theme_activate
+    prompt_on
 }
 
 #####################
 # Utility Functions #
 #####################
 
-# Remove all colors and escape characters of the given string and return a pure text
-_lp_as_text() {
-    # Remove all terminal sequences that we wrapped with $_LP_OPEN_ESC and
-    # $_LP_CLOSE_ESC.
-    printf '%s' "$1" | sed -r "s,$_LP_CLEAN_ESC,,g"
-}
-
-# Return true if the input is the name of a function.
-__lp_is_function() {
-    if (( _LP_SHELL_bash )); then
-        [[ $(LC_ALL=C \type -t "$1") == function ]]
-    else
-        [[ $(LC_ALL=C \type -w "$1") == *function ]]
-    fi
-}
-
-# Count the number of lines in the input string. A faster subsitute for 'wc -l'.
+# Count the number of lines in the input string. A faster substitute for 'wc -l'.
 __lp_line_count() {
   local var="${1//[!$'\n']}"
   count=${#var}
@@ -424,13 +421,13 @@ lp_terminal_format() {  # fg, bg, bold, underline, fallback_fg, fallback_bg
 
     lp_terminal_format=${_LP_OPEN_ESC}${_LP_TI_RESET}
 
-    if (( $fg >= _LP_TI_COLORS )) && [[ -n ${5-} ]]; then
+    if (( fg >= _LP_TI_COLORS )) && [[ -n ${5-} ]]; then
         _lp_last_af_color=$5
-    elif (( $fg == -2 )); then
+    elif (( fg == -2 )); then
         :  # do nothing, _lp_last_af_color already correct
-    elif (( $fg == -3 )); then
+    elif (( fg == -3 )); then
         _lp_last_af_color=$_lp_last_ab_color
-    elif (( $fg >= 0 )); then
+    elif (( fg >= 0 )); then
         _lp_last_af_color=$fg
     else  # -1
         _lp_last_af_color=-1
@@ -440,13 +437,13 @@ lp_terminal_format() {  # fg, bg, bold, underline, fallback_fg, fallback_bg
         __lp_foreground_color "$_lp_last_af_color" && lp_terminal_format+=$af_color
     fi
 
-    if (( $bg >= _LP_TI_COLORS )) && [[ -n ${6-} ]]; then
+    if (( bg >= _LP_TI_COLORS )) && [[ -n ${6-} ]]; then
         _lp_last_ab_color=$6
-    elif (( $bg == -2 )); then
+    elif (( bg == -2 )); then
         :  # do nothing, _lp_last_ab_color already correct
-    elif (( $bg == -3 )); then
+    elif (( bg == -3 )); then
         _lp_last_ab_color=$previous_af_color
-    elif (( $bg >= 0 )); then
+    elif (( bg >= 0 )); then
         _lp_last_ab_color=$bg
     else  # -1
         _lp_last_ab_color=-1
@@ -469,48 +466,6 @@ lp_terminal_format() {  # fg, bg, bold, underline, fallback_fg, fallback_bg
     fi
 
     lp_terminal_format+=$_LP_CLOSE_ESC
-}
-
-# Get a list of themes currently loaded. Looks for functions matching
-# _lp_<theme>_theme_prompt().
-__lp_theme_list() {
-    lp_theme_list=()
-
-    local -a _functions
-    if (( _LP_SHELL_zsh )); then
-        _functions=( "${(ko)functions[@]}" )
-    else
-        local IFS=$'\n'
-        _functions=( $(declare -F) )
-    fi
-
-    local function
-    for function in "${_functions[@]}"; do
-        if [[ $function == *_lp_*_theme_prompt ]]; then
-            function=${function#*_lp_}
-            lp_theme_list+=("${function%_theme_prompt}")
-        fi
-    done
-}
-
-__lp_theme_bash_complete() {
-    COMPREPLY=()
-    local -a lp_theme_list
-    local theme partial_theme
-    partial_theme=${2-}
-
-    __lp_theme_list
-
-    for theme in "${lp_theme_list[@]}"; do
-        [[ -n $partial_theme && $theme != "$partial_theme"* ]] && continue
-        COMPREPLY+=("$theme")
-    done
-}
-
-__lp_theme_zsh_complete() {
-    local -a lp_theme_list
-    __lp_theme_list
-    _describe 'theme' lp_theme_list
 }
 
 ##########################
@@ -575,15 +530,15 @@ _lp_path_format() {
 
     local -i path_length="${#display_path}"
 
-    local lp_vcs_root lp_vcs_type
+    local lp_vcs_root lp_vcs_dir lp_vcs_type lp_vcs_subtype
     local vcs_root_directory=
     if (( LP_PATH_VCS_ROOT )) && _lp_find_vcs; then
         __lp_pwd_tilde "$lp_vcs_root"
         vcs_root_directory=$lp_pwd_tilde
     fi
 
-    if [[ $path_length == 1 || $LP_PATH_METHOD == "truncate_to_last_dir" ]]; then
-        if [[ $path_length > 1 ]]; then
+    if [[ $path_length -eq 1 || $LP_PATH_METHOD == "truncate_to_last_dir" ]]; then
+        if [[ $path_length -gt 1 ]]; then
             lp_path=${display_path##*/}
         else
             # only root or home to show
@@ -592,11 +547,12 @@ _lp_path_format() {
 
         __lp_escape "$lp_path"
 
-        if [[ $display_path == $vcs_root_directory ]]; then
+        if [[ $display_path == "$vcs_root_directory" ]]; then
             lp_path_format="${vcs_root_format}${ret}"
         else
             lp_path_format="${last_directory_format}${ret}"
         fi
+
         return
     else
         if [[ $separator != "/" && ${display_path:0:1} == "/" ]]; then
@@ -604,7 +560,7 @@ _lp_path_format() {
             # Add one to account for the first / needing to be both replaced and shown
             path_length+=1
         fi
-        if [[ ${#separator} > 1 ]]; then
+        if [[ ${#separator} -gt 1 ]]; then
             # Add length to account for multichar separators
             local slash_count="${display_path//[!\/]}"
             path_length+=$(( ${#slash_count} * ( ${#separator} - 1 ) ))
@@ -633,7 +589,7 @@ _lp_path_format() {
         current_path+=${current_directory}
         path_to_proccess=${path_to_proccess#*/}
 
-        if [[ $current_path == $vcs_root_directory ]]; then
+        if [[ $current_path == "$vcs_root_directory" ]]; then
             __lp_end_path_left_shortening
             # No shortening
             lp_path+=$current_directory
@@ -740,21 +696,16 @@ _lp_connection() {
     if [[ -n "${SSH_CLIENT-}${SSH2_CLIENT-}${SSH_TTY-}" ]]; then
         lp_connection=ssh
         return
-    fi
-
-    # tmux: see GH #304
-    # TODO check on *BSD
-    local whoami="$(LC_ALL=C who am i)"
-    if [[ x"$whoami" != *'('* || x"$whoami" = *'(:'* || x"$whoami" = *'(tmux'* ]]; then
-        lp_connection=lcl  # Local
+    elif [[ -n ${REMOTEHOST-} ]]; then
+        lp_connection=tel  # Telnet
         return
     fi
 
     local sess_parent="$(ps -o comm= -p "$PPID" 2> /dev/null)"
     if [[ "$sess_parent" = "su" || "$sess_parent" = "sudo" ]]; then
-        lp_connection=su   # Remote su/sudo
+        lp_connection=su   # su/sudo
     else
-        lp_connection=tel  # Telnet
+        lp_connection=lcl  # Local
     fi
 }
 
@@ -785,10 +736,10 @@ _lp_error_color() {
 
 _lp_multiplexer() {
     if [[ -n ${TMUX-} ]]; then
-        lp_mulitplexer=tmux
+        lp_multiplexer=tmux
         return 0
     elif [[ "${TERM-}" == screen* ]]; then
-        lp_mulitplexer=screen
+        lp_multiplexer=screen
         return 0
     fi
     return 1
@@ -812,72 +763,6 @@ _lp_http_proxy_color() {
     lp_http_proxy_color="${LP_COLOR_PROXY}${LP_MARK_PROXY}${NO_COL}"
 }
 
-_lp_python_env() {
-    (( LP_ENABLE_VIRTUALENV )) || return 2
-
-    local ret
-
-    # Why are these trunkated to the last '/' section? It has always been this
-    # way, and the original author didn't explain why.
-    if [[ -n "${VIRTUAL_ENV-}" ]]; then
-        __lp_escape "${VIRTUAL_ENV##*/}"
-        lp_python_env=$ret
-    elif [[ -n "${CONDA_DEFAULT_ENV-}" ]]; then
-        __lp_escape "${CONDA_DEFAULT_ENV##*/}"
-        lp_python_env=$ret
-    else
-        return 1
-    fi
-}
-
-_lp_python_env_color() {
-    _lp_python_env || return "$?"
-
-    lp_python_env_color="[${LP_COLOR_VIRTUALENV}${lp_python_env}${NO_COL}]"
-}
-
-_lp_ruby_env() {
-    (( LP_ENABLE_RUBY_VENV )) || return 2
-
-    local ret
-
-    if [[ "$_LP_RUBY_VENV_PROGRAM" = "rvm" ]] ; then
-        __lp_escape "$(rvm-prompt "${LP_RUBY_RVM_PROMPT_OPTIONS[@]}")"
-        lp_ruby_env=$ret
-    elif [[ "$_LP_RUBY_VENV_PROGRAM" = "rbenv" ]] ; then
-        local rbenv_ver="$(rbenv version)"
-        # Only first word is necessary
-        __lp_escape "${rbenv_ver%%" (set"*}"
-        lp_ruby_env=$ret
-    else
-        return 1
-    fi
-}
-
-_lp_ruby_env_color() {
-    _lp_ruby_env || return "$?"
-
-    lp_ruby_env_color="[${LP_COLOR_VIRTUALENV}${lp_ruby_env}${NO_COL}]"
-}
-
-_lp_software_collections() {
-    (( LP_ENABLE_SCLS )) || return 2
-
-    if [[ -n "${X_SCLS-}" ]]; then
-        local ret
-        __lp_escape "${X_SCLS%"${X_SCLS##*[![:space:]]}"}"
-        lp_software_collections=$ret
-    else
-        return 1
-    fi
-}
-
-_lp_software_collections_color() {
-    _lp_software_collections || return "$?"
-
-    lp_software_collections_color="[${LP_COLOR_VIRTUALENV}${lp_software_collections}${NO_COL}]"
-}
-
 # Determine what type of user we are
 _lp_user() {
     if (( EUID == 0 )); then
@@ -897,14 +782,14 @@ _lp_username() {
         # No username ever
         return 2
     elif (( LP_USER_ALWAYS )) || ! _lp_user; then
-        lp_username_raw=${USER:-${USERNAME:-${LOGNAME-}}}
+        lp_username=${USER:-${USERNAME:-${LOGNAME-}}}
 
-        if [[ -z $lp_username_raw ]]; then
-            lp_username_raw=$(id -nu 2>/dev/null)
+        if [[ -z $lp_username ]]; then
+            lp_username=$(id -nu 2>/dev/null)
         fi
 
         local ret
-        __lp_escape "$lp_username_raw"
+        __lp_escape "$lp_username"
         lp_username=$ret
 
         return 0
@@ -922,9 +807,11 @@ _lp_username_color() {
 # Test the code with the commands:
 #   sudo id   # sudo, enter your credentials
 #   sudo -K   # revoke your credentials
+#   sudo -v   # return non-zero when no credentials are cached
+#   sudo -nvk # return true if user can run commands without password input
 _lp_sudo_active() {
     (( LP_ENABLE_SUDO )) || return 2
-    \sudo -n true 2>/dev/null || return 1
+    \sudo -nv 2>/dev/null || return 1
 }
 
 _lp_sudo_active_color() {
@@ -946,15 +833,23 @@ _lp_hostname() {
             return 1
         fi
 
-        lp_hostname_raw=${HOSTNAME:-${HOST-}}
+        if [[ $LP_HOSTNAME_METHOD == fqdn ]]; then
+            lp_hostname=$(hostname -f 2>/dev/null)
+        elif [[ $LP_HOSTNAME_METHOD == pretty ]]; then
+            lp_hostname=$(hostnamectl --pretty 2>/dev/null)
+        fi
+
+        if [[ -z ${lp_hostname-} ]]; then
+            lp_hostname=${HOSTNAME:-${HOST-}}
+        fi
 
         # Truncate to the first subdomain
-        if ! (( LP_ENABLE_FQDN )); then
-            lp_hostname_raw=${lp_hostname_raw%%.*}
+        if [[ $LP_HOSTNAME_METHOD == short ]]; then
+            lp_hostname=${lp_hostname%%.*}
         fi
 
         local ret
-        __lp_escape "$lp_hostname_raw"
+        __lp_escape "$lp_hostname"
         lp_hostname=$ret
     else
         return 2
@@ -978,19 +873,19 @@ _lp_hostname_color() {
     if _lp_hostname; then
         case "$lp_connection" in
             lcl)
-                lp_hostname_color+="${LP_MARK_X11}${NO_COL}${LP_COLOR_HOST}${lp_hostname}${NO_COL}"
+                lp_hostname_color+="${LP_MARK_X11}${LP_COLOR_HOST}${lp_hostname}${NO_COL}"
                 ;;
             ssh)
-                lp_hostname_color+="${LP_MARK_X11}${NO_COL}${LP_COLOR_SSH}${lp_hostname}${NO_COL}"
+                lp_hostname_color+="${LP_MARK_X11}${LP_COLOR_SSH}${lp_hostname}${NO_COL}"
                 ;;
             su)
-                lp_hostname_color+="${LP_MARK_X11}${NO_COL}${LP_COLOR_SU}${lp_hostname}${NO_COL}"
+                lp_hostname_color+="${LP_MARK_X11}${LP_COLOR_SU}${lp_hostname}${NO_COL}"
                 ;;
             tel)
-                lp_hostname_color+="${LP_MARK_X11}${NO_COL}${LP_COLOR_TELNET}${lp_hostname}${NO_COL}"
+                lp_hostname_color+="${LP_MARK_X11}${LP_COLOR_TELNET}${lp_hostname}${NO_COL}"
                 ;;
             *)
-                lp_hostname_color+="${LP_MARK_X11}${NO_COL}${NO_COL}${lp_hostname}" # defaults to no color
+                lp_hostname_color+="${LP_MARK_X11}${NO_COL}${lp_hostname}" # defaults to no color
                 ;;
         esac
     else
@@ -1005,6 +900,24 @@ _lp_hostname_color() {
     fi
 }
 
+_lp_dirstack() {
+    (( LP_ENABLE_DIRSTACK )) || return 2
+
+    local count dir_stack
+    dir_stack=$(dirs -p; printf x)
+
+    __lp_line_count "${dir_stack%x}"
+    lp_dirstack=$count
+
+    (( lp_dirstack > 1 ))
+}
+
+_lp_dirstack_color() {
+    _lp_dirstack || return "$?"
+
+    lp_dirstack_color="${LP_COLOR_DIRSTACK}${LP_MARK_DIRSTACK}${lp_dirstack}${NO_COL}"
+}
+
 ################
 # Related jobs #
 ################
@@ -1014,8 +927,8 @@ _lp_detached_sessions() {
     (( LP_ENABLE_DETACHED_SESSIONS )) || return 2
 
     local -i count=0
-    (( _LP_ENABLE_SCREEN )) && count=$(screen -ls 2> /dev/null | \grep -c '[Dd]etach[^)]*)$')
-    (( _LP_ENABLE_TMUX )) && count+=$(tmux list-sessions 2> /dev/null | \grep -cv 'attached')
+    (( _LP_ENABLE_SCREEN )) && count=$(screen -ls 2> /dev/null | GREP_OPTIONS='' \grep -c '[Dd]etach[^)]*)$')
+    (( _LP_ENABLE_TMUX )) && count+=$(tmux list-sessions 2> /dev/null | GREP_OPTIONS='' \grep -cv 'attached')
     lp_detached_sessions=$count
 
     (( lp_detached_sessions ))
@@ -1053,11 +966,11 @@ _lp_jobcount_color() {
 
     if _lp_jobcount; then
         if (( lp_running_jobs > 0 )); then
-            [[ -n "$lp_jobcount_color" ]] && lp_jobcount_color+='/'
+            [[ -n "$lp_jobcount_color" ]] && lp_jobcount_color+="$LP_MARK_JOBS_SEPARATOR"
             lp_jobcount_color+="${LP_COLOR_JOB_R}${lp_running_jobs}&${NO_COL}"
         fi
         if (( lp_stopped_jobs > 0 )); then
-            [[ -n "$lp_jobcount_color" ]] && lp_jobcount_color+='/'
+            [[ -n "$lp_jobcount_color" ]] && lp_jobcount_color+="$LP_MARK_JOBS_SEPARATOR"
             lp_jobcount_color+="${LP_COLOR_JOB_Z}${lp_stopped_jobs}z${NO_COL}"
         fi
     fi
@@ -1084,47 +997,68 @@ _lp_are_vcs_enabled() {
 _lp_find_vcs() {
     if ! _lp_are_vcs_enabled; then
         lp_vcs_type="disabled"
-        lp_vcs_root=
+        lp_vcs_root=""
         return 2
     fi
 
-    local vcs
+    lp_vcs_type=""
 
-    lp_vcs_root="$PWD"
-    while [[ -n "$lp_vcs_root" ]]; do
-        for vcs in ${_LP_ENABLED_VCSS[@]+"${_LP_ENABLED_VCSS[@]}"}; do
-            if [[ -d "$lp_vcs_root/.$vcs" ]]; then
-                lp_vcs_type="$vcs"
-                return 0
+    # Based on the Git behavior here:
+    # https://git-scm.com/book/en/v2/Git-Internals-Environment-Variables
+    if [[ -d "${GIT_DIR-}" ]]; then
+        lp_vcs_type="git"
+        lp_vcs_dir="$GIT_DIR"
+        lp_vcs_root="${GIT_WORK_TREE:-"$(\git rev-parse --show-toplevel 2>/dev/null)"}"
+    fi
+
+    if [[ -z $lp_vcs_type ]]; then
+        local vcs
+        lp_vcs_root="$PWD"
+        while [[ -n "$lp_vcs_root" ]]; do
+            if (( LP_ENABLE_GIT )) && [[ -d "$lp_vcs_root/.git" ]]; then
+                lp_vcs_type="git"
+                lp_vcs_dir="$lp_vcs_root/.git"
+                break
             fi
+            if (( LP_ENABLE_GIT )) && [[ -f "$lp_vcs_root/.git" ]]; then
+                lp_vcs_type="git"
+                lp_vcs_dir="$(\git rev-parse --git-dir 2>/dev/null)"
+                break
+            fi
+
+            lp_vcs_root="${lp_vcs_root%/*}"
         done
+    fi
 
-        if (( LP_ENABLE_GIT )) && [[ -f "$lp_vcs_root/.git" ]]; then
-            lp_vcs_type="git"
-            return 0
+    if [[ $lp_vcs_type == git ]]; then
+        if [[ -n "${VCSH_DIRECTORY-}" ]]; then
+            lp_vcs_subtype="vcsh"
+        elif [[ -d "${lp_vcs_dir}/svn" ]]; then
+            lp_vcs_subtype="svn"
+        else
+            lp_vcs_subtype=""
         fi
+    fi
 
-        lp_vcs_root="${lp_vcs_root%/*}"
-    done
-
-    lp_vcs_type=
-    lp_vcs_root=
-    return 1
+    if [[ -z $lp_vcs_type ]]; then
+        lp_vcs_root=""
+        return 1
+    fi
 }
 
 # Set the prompt mark depending on the current VCS.
 _lp_smart_mark() {
+    local subtype="${2:-"${lp_vcs_subtype-}"}"
     case "${1:-$lp_vcs_type}" in
         git)
-            lp_smart_mark="$LP_MARK_GIT"
-
-            if [[ -n "${VCSH_DIRECTORY-}" ]]; then
-                lp_smart_mark="$LP_MARK_VCSH$LP_MARK_GIT$LP_MARK_VCSH"
-            elif [[ -d "${lp_vcs_root}/.git/svn" ]]; then
+            if [[ $subtype == vcsh ]]; then
+                lp_smart_mark="$LP_MARK_VCSH${VCSH_DIRECTORY-}$LP_MARK_GIT$LP_MARK_VCSH"
+            elif [[ $subtype == svn ]]; then
                 lp_smart_mark="$LP_MARK_GIT$LP_MARK_SVN"
+            else
+                lp_smart_mark="$LP_MARK_GIT"
             fi
             ;;
-        hg)       lp_smart_mark="$LP_MARK_HG";;
         disabled) lp_smart_mark="$LP_MARK_DISABLED";;
         *)        lp_smart_mark="$LP_MARK_DEFAULT";;
     esac
@@ -1137,12 +1071,6 @@ _lp_vcs_details_color() {
     local branch
     if _lp_vcs_branch; then
         branch="$lp_vcs_branch"
-
-        if _lp_vcs_bookmark; then
-            branch+=": $lp_vcs_bookmark"
-        fi
-    elif _lp_vcs_bookmark; then
-        branch="$lp_vcs_bookmark"
     elif _lp_vcs_tag; then
         branch="tag: $lp_vcs_tag"
     else
@@ -1208,86 +1136,81 @@ _lp_vcs_details_color() {
     lp_vcs_details_color+="$NO_COL"
 }
 
-# Check if the detected VCS is enabled in Liquidprompt and the current
+# Check if the detected VCS is enabled in Liquid Prompt and the current
 # directory is a valid repository of that type.
 _lp_vcs_active() {
-    "_lp_${lp_vcs_type}_active" 2>/dev/null
+    "_lp_${lp_vcs_type}_active"
 }
 
 # Get the branch name of the repo in the current directory.
 _lp_vcs_branch() {
-    "_lp_${lp_vcs_type}_branch" 2>/dev/null
-}
-
-# Get the bookmark name of the repo in the current directory.
-_lp_vcs_bookmark() {
-    "_lp_${lp_vcs_type}_bookmark" 2>/dev/null
+    "_lp_${lp_vcs_type}_branch"
 }
 
 # Get a tag name of the repo in the current directory.
 _lp_vcs_tag() {
-    "_lp_${lp_vcs_type}_tag" 2>/dev/null
+    "_lp_${lp_vcs_type}_tag"
 }
 
 # Get the current commit string for the repo in the current directory.
 _lp_vcs_commit_id() {
-    "_lp_${lp_vcs_type}_commit_id" 2>/dev/null
+    "_lp_${lp_vcs_type}_commit_id"
 }
 
 # Get additional information if the repo is in a special or unusual state.
 _lp_vcs_head_status() {
-    "_lp_${lp_vcs_type}_head_status" 2>/dev/null
+    "_lp_${lp_vcs_type}_head_status"
     # TODO: set lp_vcs_head_details if not set?
 }
 
 # Get the number of stashes in the repo.
 _lp_vcs_stash_count() {
-    "_lp_${lp_vcs_type}_stash_count" 2>/dev/null
+    "_lp_${lp_vcs_type}_stash_count"
 }
 
 # Get the number of commits ahead and behind the upstream branch.
 _lp_vcs_commits_off_remote() {
-    "_lp_${lp_vcs_type}_commits_off_remote" 2>/dev/null
+    "_lp_${lp_vcs_type}_commits_off_remote"
 }
 
 # Get the number of untracked aka extra files in the repo.
 _lp_vcs_untracked_files() {
-    "_lp_${lp_vcs_type}_untracked_files" 2>/dev/null
+    "_lp_${lp_vcs_type}_untracked_files"
 }
 
 # Get the number of changed files compared to the last or checked out commit.
 _lp_vcs_uncommitted_files() {
-    "_lp_${lp_vcs_type}_uncommitted_files" 2>/dev/null
+    "_lp_${lp_vcs_type}_uncommitted_files"
 }
 
 # Get the number of changed lines compared to the last or checked out commit.
 _lp_vcs_uncommitted_lines() {
-    "_lp_${lp_vcs_type}_uncommitted_lines" 2>/dev/null
+    "_lp_${lp_vcs_type}_uncommitted_lines"
 }
 
 # Get the number of changed files compared to staging.
 _lp_vcs_unstaged_files() {
-    "_lp_${lp_vcs_type}_unstaged_files" 2>/dev/null
+    "_lp_${lp_vcs_type}_unstaged_files"
 }
 
 # Get the number of changed lines compared to staging.
 _lp_vcs_unstaged_lines() {
-    "_lp_${lp_vcs_type}_unstaged_lines" 2>/dev/null
+    "_lp_${lp_vcs_type}_unstaged_lines"
 }
 
 # Get the number of changed files in staging compared to the last or checked out commit.
 _lp_vcs_staged_files() {
-    "_lp_${lp_vcs_type}_staged_files" 2>/dev/null
+    "_lp_${lp_vcs_type}_staged_files"
 }
 
 # Get the number of changed lines in staging compared to the last or checked out commit.
 _lp_vcs_staged_lines() {
-    "_lp_${lp_vcs_type}_staged_lines" 2>/dev/null
+    "_lp_${lp_vcs_type}_staged_lines"
 }
 
 # GIT #
 
-# Check if Git is enabled in Liquidprompt and the current directory is a valid
+# Check if Git is enabled in Liquid Prompt and the current directory is a valid
 # Git repository.
 _lp_git_active() {
     (( LP_ENABLE_GIT )) || return 2
@@ -1325,33 +1248,33 @@ _lp_git_commit_id() {
 
 # Get additional information if HEAD is in merging, rebasing or cherry-picking state.
 _lp_git_head_status() {
-    local gitdir="${lp_vcs_root}/.git" IFS= step total
+    local IFS="" step total
 
-    if [[ -f "${gitdir}/MERGE_HEAD" ]]; then
+    if [[ -f "${lp_vcs_dir}/MERGE_HEAD" ]]; then
         lp_vcs_head_status="MERGING"
-    elif [[ -d "${gitdir}/rebase-merge" ]]; then
-        read step <"${gitdir}/rebase-merge/msgnum"
-        read total <"${gitdir}/rebase-merge/end"
-        if [ -f "${gitdir}/rebase-merge/interactive" ]; then
+    elif [[ -d "${lp_vcs_dir}/rebase-merge" ]]; then
+        test -r "${lp_vcs_dir}/rebase-merge/msgnum" && read -r step <"${lp_vcs_dir}/rebase-merge/msgnum"
+        test -r "${lp_vcs_dir}/rebase-merge/end" && read -r total <"${lp_vcs_dir}/rebase-merge/end"
+        if [[ -f "${lp_vcs_dir}/rebase-merge/interactive" ]]; then
             lp_vcs_head_status="REBASE-i"
         else
             lp_vcs_head_status="REBASE-m"
         fi
-    elif [[ -d "${gitdir}/rebase-apply" ]]; then
-        read step <"${gitdir}/rebase-apply/next"
-        read total <"${gitdir}/rebase-apply/last"
-        if [ -f "${gitdir}/rebase-apply/rebasing" ]; then
+    elif [[ -d "${lp_vcs_dir}/rebase-apply" ]]; then
+        test -r "${lp_vcs_dir}/rebase-apply/next" && read -r step <"${lp_vcs_dir}/rebase-apply/next"
+        test -r "${lp_vcs_dir}/rebase-apply/last" && read -r total <"${lp_vcs_dir}/rebase-apply/last"
+        if [[ -f "${lp_vcs_dir}/rebase-apply/rebasing" ]]; then
             lp_vcs_head_status="REBASE"
-        elif [ -f "${gitdir}/rebase-apply/applying" ]; then
+        elif [[ -f "${lp_vcs_dir}/rebase-apply/applying" ]]; then
             lp_vcs_head_status="AM"
         else
             lp_vcs_head_status="AM/REBASE"
         fi
-    elif [[ -f "${gitdir}/CHERRY_PICK_HEAD" ]]; then
+    elif [[ -f "${lp_vcs_dir}/CHERRY_PICK_HEAD" ]]; then
         lp_vcs_head_status="CHERRY-PICKING"
-    elif [[ -f "${gitdir}/REVERT_HEAD" ]]; then
+    elif [[ -f "${lp_vcs_dir}/REVERT_HEAD" ]]; then
         lp_vcs_head_status="REVERTING"
-    elif [[ -f "${gitdir}/BISECT_START" ]]; then
+    elif [[ -f "${lp_vcs_dir}/BISECT_START" ]]; then
         lp_vcs_head_status="BISECTING"
     else
         return 1
@@ -1360,7 +1283,7 @@ _lp_git_head_status() {
     if [[ -n "$step" && -n "$total" ]]; then
         lp_vcs_head_details="${step}/${total}"
     else
-        lp_vcs_head_details=
+        lp_vcs_head_details=""
     fi
 }
 
@@ -1376,13 +1299,13 @@ _lp_git_commits_off_remote() {
     local counts
     # The "@{upstream}" notation was added in Git 1.7.0, so this should work for everyone
     counts="$(\git rev-list --count --left-right '@{upstream}...HEAD' 2>/dev/null)" || return 2
-    IFS=$' \t' read lp_vcs_commit_behind lp_vcs_commit_ahead <<<"$counts"
+    IFS=$' \t' read -r lp_vcs_commit_behind lp_vcs_commit_ahead <<<"$counts"
     (( lp_vcs_commit_behind || lp_vcs_commit_ahead ))
 }
 
 # Get the number of untracked files in the repo.
 _lp_git_untracked_files() {
-    lp_vcs_untracked_files="$(LC_ALL=C \git status --porcelain 2>/dev/null | \grep -c '^??')"
+    lp_vcs_untracked_files="$(LC_ALL=C \git status --porcelain 2>/dev/null | GREP_OPTIONS='' \grep -c '^??')"
     (( lp_vcs_untracked_files ))
 }
 
@@ -1501,119 +1424,6 @@ _lp_git_staged_lines() {
     lp_vcs_staged_d_lines=$lp_git_diff_shortstat_d_lines
 }
 
-# MERCURIAL #
-# Note that Mercurial has no staging area
-
-# Check if Mercurial is enabled in Liquidprompt and the current directory is a
-# valid Mercurial repository.
-_lp_hg_active() {
-    (( LP_ENABLE_HG )) || return 2
-    \hg root >/dev/null 2>&1 || return 1
-}
-
-# Get the branch name of the Mercurial repo in the current directory.
-_lp_hg_branch() {
-    local branch ret
-    if branch="$(\hg branch 2>/dev/null)"; then
-        __lp_escape "$branch"
-        lp_vcs_branch="$ret"
-    else
-        # This should never happen. Should this function return a branch name
-        # only if the head of the branch is checked out? But there can be
-        # multiple heads of a branch...
-        return 1
-    fi
-}
-
-# Get the bookmark name of the Mercurial repo in the current directory.
-_lp_hg_bookmark() {
-    local bookmark ret
-    if bookmark="$(\hg bookmark --list --quiet . 2>/dev/null)"; then
-        __lp_escape "$bookmark"
-        lp_vcs_bookmark="$ret"
-    else
-        return 1
-    fi
-}
-
-# Get the most recent tag that refers to the current revision.
-_lp_hg_tag() {
-    local tags ret
-    tags="$(\hg identify --template='{tags}' 2>/dev/null)"
-    if [[ -n "$tags" ]]; then
-        # Tags are separated by ':', get the first one
-        __lp_escape "${tags%%:*}"
-        lp_vcs_tag="$ret"
-    else
-        return 1
-    fi
-}
-
-# Get the current global revision id for the repo in the current directory.
-_lp_hg_commit_id() {
-    lp_vcs_commit_id="$(\hg identify --id 2>/dev/null)"
-}
-
-# Get additional information if the repo is in any unfinished state.
-_lp_hg_head_status() {
-    local hgdir="${lp_vcs_root}/.hg"
-    if [[ -d "${hgdir}/merge" ]]; then
-        lp_vcs_head_status="MERGING"
-    elif [[ -f "${hgdir}/rebasestate" ]]; then
-        lp_vcs_head_status="REBASING"
-    elif [[ -f "${hgdir}/updatestate" ]]; then
-        lp_vcs_head_status="UPDATING"
-    elif [[ -f "${hgdir}/bisect.state" ]]; then
-        lp_vcs_head_status="BISECTING"
-    elif [[ -f "${hgdir}/shelvedstate" ]]; then
-        lp_vcs_head_status="SHELVING"
-    elif [[ -f "${hgdir}/graftstate" ]]; then
-        lp_vcs_head_status="GRAFTING"
-    else
-        return 1
-    fi
-}
-
-# Get the number of Mercurial shelves in the repo.
-_lp_hg_stash_count() {
-    local shelves count
-    shelves="$(\hg shelve --list 2>/dev/null; printf x)"
-    __lp_line_count "${shelves%x}"
-    lp_vcs_stash_count="$count"
-    (( lp_vcs_stash_count ))
-}
-
-# https://github.com/nojhan/liquidprompt/issues/217
-# return: always false (3: disabled).
-_lp_hg_commits_off_remote() {
-    #commits=$(\hg outgoing --no-merges 2>/dev/null | \grep -c '\(^changeset\:\)')
-    return 3
-}
-
-# Get the number of untracked files in the Mercurial repo.
-_lp_hg_untracked_files() {
-    local untracked
-    untracked="$(\hg status --unknown --template '{status}' 2>/dev/null)"
-    lp_vcs_untracked_files="${#untracked}"
-    (( lp_vcs_untracked_files ))
-}
-
-# Get the number of changed files compared to the base revision.
-_lp_hg_uncommitted_files() {
-    local files
-    files="$(\hg status --modified --template '{status}' 2>/dev/null)"
-    lp_vcs_uncommitted_files="${#files}"
-    (( lp_vcs_uncommitted_files ))
-}
-
-# Get the number of changed lines compared to the base revision.
-_lp_hg_uncommitted_lines() {
-    IFS=' ' read lp_vcs_uncommitted_i_lines lp_vcs_uncommitted_d_lines \
-        <<<"$(\hg diff --stat 2>/dev/null | sed -n '$ s/^.*, \([0-9]*\) .*, \([0-9]*\).*$/\1 \2/p')"
-
-    (( lp_vcs_uncommitted_i_lines || lp_vcs_uncommitted_d_lines ))
-}
-
 ##########
 # Title #
 ##########
@@ -1622,7 +1432,9 @@ _lp_formatted_title() {
     (( LP_ENABLE_TITLE )) || return 2
 
     # Get the input as pure text
-    _lp_generated_title=$(_lp_as_text "${1-}")
+    local ret
+    __lp_strip_escapes "${1-}"
+    _lp_generated_title="$ret"
 }
 
 _lp_raw_title() {
@@ -1720,6 +1532,7 @@ _lp_default_theme_directory() {
     LP_PWD="${lp_path_format}${NO_COL}"
 }
 
+# Do not complain about unused variables.
 _lp_default_theme_prompt_data() {
     # left of main prompt: space at right
     if _lp_jobcount_color; then
@@ -1738,29 +1551,17 @@ _lp_default_theme_prompt_data() {
         LP_COLOR_MARK="$lp_sudo_active_color"
     fi
 
+    if _lp_dirstack_color; then
+        LP_DIRSTACK=" $lp_dirstack_color"
+    else
+        LP_DIRSTACK=
+    fi
+
     # in main prompt: no space
     if _lp_http_proxy_color; then
         LP_PROXY="$lp_http_proxy_color"
     else
         LP_PROXY=
-    fi
-
-    if _lp_python_env_color; then
-        LP_VENV=" $lp_python_env_color"
-    else
-        LP_VENV=
-    fi
-
-    if _lp_ruby_env_color; then
-        LP_RUBY_VENV=" $lp_ruby_env_color"
-    else
-        LP_RUBY_VENV=
-    fi
-
-    if _lp_software_collections_color; then
-        LP_SCLS=" $lp_software_collections_color"
-    else
-        LP_SCLS=
     fi
 
     if _lp_error_color; then
@@ -1800,8 +1601,8 @@ _lp_default_theme_prompt_template() {
         PS1="${LP_PS1_PREFIX}${LP_TIME}${LP_JOBS}"
         # add user, host and permissions colon
         PS1+="${LP_BRACKET_OPEN}${LP_USER}${LP_HOST}${LP_PERM}"
-
-        PS1+="${LP_PWD}${LP_BRACKET_CLOSE}${LP_SCLS}${LP_VENV}${LP_RUBY_VENV}${LP_PROXY}"
+        # add working directory, dirstack and proxy
+        PS1+="${LP_PWD}${LP_DIRSTACK}${LP_BRACKET_CLOSE}${LP_PROXY}"
 
         # Add VCS infos
         # If root, the info has not been collected unless LP_ENABLE_VCS_ROOT
@@ -1812,7 +1613,7 @@ _lp_default_theme_prompt_template() {
         PS1+="${LP_ERR}${LP_MARK_PREFIX}${LP_COLOR_MARK}${LP_MARK}${LP_PS1_POSTFIX}"
 
         # Get the core sections without prompt escapes and make them into a title.
-        _lp_formatted_title "${LP_PS1_PREFIX}${LP_MARK_BRACKET_OPEN}${lp_username_raw-}${lp_hostname_raw+"${LP_MARK_X11}"}${lp_hostname_raw-}${LP_MARK_PERM}${lp_path-}${LP_MARK_BRACKET_CLOSE} ${lp_smart_mark}${LP_PS1_POSTFIX}"
+        _lp_formatted_title "${LP_PS1_PREFIX}${LP_BRACKET_OPEN}${LP_USER}${LP_HOST}${LP_PERM}${LP_PWD}${LP_BRACKET_CLOSE} ${LP_MARK}${LP_PS1_POSTFIX}"
     else
         PS1=$LP_PS1
     fi
@@ -1833,14 +1634,16 @@ __lp_set_prompt() {
     local -i lp_error="$?"
 
     # bash: execute the old prompt hook
-    eval "$LP_OLD_PROMPT_COMMAND"
+    if [[ -n ${LP_OLD_PROMPT_COMMAND-} ]]; then
+        eval "$LP_OLD_PROMPT_COMMAND"
+    fi
 
     # Localize cache data variables
     local _lp_git_diff_shortstat_uncommitted _lp_git_diff_shortstat_unstaged _lp_git_diff_shortstat_staged
 
     # if change of working directory
     if [[ "${LP_OLD_PWD-}" != "LP:$PWD" ]]; then
-        "$_LP_THEME_DIRECTORY_FUNCTION"
+        _lp_default_theme_directory
 
         # Prefix with 'LP:' to prevent Zsh with AUTO_NAME_DIRS enabled using
         # this var as a name for the working directory, that will be used by
@@ -1849,7 +1652,7 @@ __lp_set_prompt() {
         LP_OLD_PWD="LP:$PWD"
     fi
 
-    "$_LP_THEME_PROMPT_FUNCTION"
+    _lp_default_theme_prompt
 
     if (( LP_ENABLE_TITLE )); then
         PS1="${_LP_OPEN_ESC}${LP_TITLE_OPEN}${_lp_manual_title:-${_lp_generated_title-${SHELL-}}}${LP_TITLE_CLOSE}${_LP_CLOSE_ESC}${PS1}"
@@ -1872,28 +1675,6 @@ prompt_on() {
     # if Liquid Prompt has not been already set
     if [[ -z "${LP_OLD_PS1-}" ]]; then
         LP_OLD_PS1="$PS1"
-        if (( _LP_SHELL_bash )); then
-            LP_OLD_PROMPT_COMMAND="${PROMPT_COMMAND-}"
-            _LP_OLD_SHOPT="$(shopt -p promptvars)"
-        else # zsh
-            LP_OLD_PROMPT_COMMAND=""
-            _LP_ZSH_PROMPT_THEME=""
-            if [[ -n "${prompt_theme-}" && "$prompt_theme" != off ]]; then
-                _LP_ZSH_PROMPT_THEME="$prompt_theme"
-                # Disable the prompt to disable its precmd hook
-                prompt off
-            fi
-            _LP_OLD_SETOPT=()
-            # Dump option names: echo ${(ko)options}
-            for o in promptpercent promptbang promptsubst
-            do
-                if [[ "${options[$o]}" = on ]]; then
-                    _LP_OLD_SETOPT+=("$o")
-                else
-                    _LP_OLD_SETOPT+=("no$o")
-                fi
-            done
-        fi
     fi
     if (( _LP_SHELL_bash )); then
         # Prevent some cases where the user shoots in his own foot.
@@ -1906,82 +1687,92 @@ prompt_on() {
             declare -g +x PROMPT_COMMAND
         fi
 
-        # Disable parameter/command expansion from PS1
-        shopt -u promptvars
-        PROMPT_COMMAND=__lp_set_prompt
+        local set_prompt_command=__lp_set_prompt
+
+        if (( ${BASH_VERSINFO[0]:-0} > 5 || ( ${BASH_VERSINFO[0]:-0} == 5 && ${BASH_VERSINFO[1]:-0} >= 1 ) )); then
+            # PROMPT_COMMAND is an array since bash 5.1
+            PROMPT_COMMAND+=( "$set_prompt_command" )
+        else
+            if [[ -z ${LP_OLD_PROMPT_COMMAND+x} ]]; then
+                LP_OLD_PROMPT_COMMAND="${PROMPT_COMMAND-}"
+            fi
+            PROMPT_COMMAND="$set_prompt_command"
+        fi
     else # zsh
-        # Set options that affect PS1 evaluation
-        # Disable parameter/command expansion; enable percent expansion
-        setopt promptpercent nopromptbang nopromptsubst
+        if [[ -n "${prompt_theme-}" && "$prompt_theme" != off ]]; then
+            _LP_ZSH_PROMPT_THEME="$prompt_theme"
+            # Disable the prompt to disable its precmd hook
+            prompt off
+        fi
+
+        if [[ -z ${_LP_OLD_SETOPT-} ]]; then
+            # Dump option names: echo ${(ko)options}
+            if [[ "${options[promptpercent]}" == on ]]; then
+                _LP_OLD_SETOPT="promptpercent"
+            else
+                _LP_OLD_SETOPT="nopromptpercent"
+            fi
+        fi
+
+        # Set options that affect PS1 evaluation; enable percent expansion
+        setopt promptpercent
+
         add-zsh-hook precmd __lp_set_prompt
+    fi
+}
+
+__lp_disable_hooks() {
+    if (( _LP_SHELL_bash )); then
+        if (( ${BASH_VERSINFO[0]:-0} > 5 || ( ${BASH_VERSINFO[0]:-0} == 5 && ${BASH_VERSINFO[1]:-0} >= 1 ) )); then
+            # PROMPT_COMMAND is an array since bash 5.1
+            for i in ${PROMPT_COMMAND[@]+"${!PROMPT_COMMAND[@]}"}; do
+                local value="${PROMPT_COMMAND[i]}"
+                if [[ $value == "__lp_set_prompt" || $value == "time __lp_set_prompt" ]]; then
+                    unset 'PROMPT_COMMAND[i]'
+                fi
+            done
+        else
+            if [[ -n ${LP_OLD_PROMPT_COMMAND+x} ]]; then
+                # shellcheck disable=SC2178
+                PROMPT_COMMAND="${LP_OLD_PROMPT_COMMAND-}"
+                unset LP_OLD_PROMPT_COMMAND
+            fi
+        fi
+    else # zsh
+        # Disable previous hooks as options that set them
+        # may have changed
+        {
+            add-zsh-hook -d precmd  __lp_set_prompt
+        } >/dev/null
     fi
 }
 
 # Come back to the old prompt
 prompt_off() {
+    __lp_disable_hooks
+
     PS1=$LP_OLD_PS1
-    if (( _LP_SHELL_bash )); then
-        eval "$_LP_OLD_SHOPT"
-        PROMPT_COMMAND="$LP_OLD_PROMPT_COMMAND"
-    else # zsh
-        add-zsh-hook -d precmd __lp_set_prompt
-        setopt "${_LP_OLD_SETOPT[@]}"
-        (( ${#_LP_ZSH_PROMPT_THEME} )) && prompt "$_LP_ZSH_PROMPT_THEME"
+
+    if (( _LP_SHELL_zsh )); then
+        setopt "${_LP_OLD_SETOPT}"
+
+        if [[ -n ${_LP_ZSH_PROMPT_THEME-} ]]; then
+            prompt "$_LP_ZSH_PROMPT_THEME"
+            unset _LP_ZSH_PROMPT_THEME
+        fi
     fi
 }
 
 # Use an empty prompt: just the ❯ mark
 prompt_OFF() {
+    __lp_disable_hooks
+
     PS1="❯ "
-    if (( _LP_SHELL_bash )); then
-        shopt -u promptvars
-        PROMPT_COMMAND="$LP_OLD_PROMPT_COMMAND"
-    else # zsh
-        add-zsh-hook -d precmd __lp_set_prompt
-        setopt promptpercent nopromptbang nopromptsubst
-    fi
 }
 
-lp_theme() {
-    local theme="${1-}"
-
-    if [[ $theme == '--list' ]]; then
-        local -a lp_theme_list
-        __lp_theme_list
-        printf '%s\n' "${lp_theme_list[@]}"
-        return
-    fi
-
-    local f_prompt="_lp_${theme}_theme_prompt" f_dir="_lp_${theme}_theme_directory" f_activate="_lp_${theme}_theme_activate"
-
-    if [[ -z $theme ]]; then
-        printf '%s\n%s\n' \
-            'Must pass in the name of a theme. If you meant the default Liquidprompt theme, try "default".' \
-            'Run "lp_theme --list" to see all loaded and available themes.' 2>&1
-        return 1
-    fi
-
-    if ! __lp_is_function "$f_prompt"; then
-        printf 'Loading theme "%s" failed: cannot find function "%s". Please source the theme file first.\n' \
-            "$theme" "$f_prompt" 2>&1
-        return 2
-    fi
-    if ! __lp_is_function "$f_dir"; then
-        f_dir=":"
-    fi
-    if ! __lp_is_function "$f_activate"; then
-        f_activate=":"
-    fi
-
-    _LP_THEME_ACTIVATE_FUNCTION=$f_activate
-    _LP_THEME_DIRECTORY_FUNCTION=$f_dir
-    _LP_THEME_PROMPT_FUNCTION=$f_prompt
-
-    "$f_activate"
-    prompt_on
-}
-
-# By default, sourcing liquidprompt will activate Liquid Prompt
-lp_activate
+# By default, sourcing 'liquidprompt' will activate Liquid Prompt
+if [ "${1-}" != "--no-activate" ]; then
+    lp_activate
+fi
 
 # vim: set et sts=4 sw=4 tw=120 ft=sh:
