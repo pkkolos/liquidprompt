@@ -32,7 +32,7 @@ if test -n "${BASH_VERSION-}"; then
 
     # Escape the given strings
     # Must be used for all strings injected in PS1 that may comes from remote sources,
-    # like $PWD, VCS branch names...
+    # like $PWD, Git branch names...
     __lp_escape() {
         ret="${1//\\/\\\\}"
         if shopt -q promptvars ; then
@@ -42,16 +42,10 @@ if test -n "${BASH_VERSION-}"; then
     }
 
     __lp_strip_escapes() {
-        if ! shopt -q extglob ; then
-            local _lp_no_extglob=true
-            shopt -s extglob
-        fi
-
-        ret="${1//"${_LP_OPEN_ESC}"!(*"${_LP_CLOSE_ESC}"*)"${_LP_CLOSE_ESC}"}"
-
-        if [[ -n ${_lp_no_extglob-} ]]; then
-            shopt -u extglob
-        fi
+        ret="$1"
+        while [[ "$ret" == *"$_LP_OPEN_ESC"* ]]; do
+            ret="${ret%%"$_LP_OPEN_ESC"*}${ret#*"$_LP_CLOSE_ESC"}"
+        done
 
         ret="${ret//\\\\/\\}"
         if shopt -q promptvars ; then
@@ -95,6 +89,18 @@ else
     echo "liquidprompt: shell not supported" >&2
     return
 fi
+
+__lp_array_contains() {
+    local target="$1"
+    shift
+
+    for element; do
+        if [[ $element == "$target" ]]; then
+            return 0
+        fi
+    done
+    return 1
+}
 
 #################
 # CONFIGURATION #
@@ -157,34 +163,38 @@ __lp_source_config() {
 
     # Default values (globals)
     LP_TIME_FORMAT=${LP_TIME_FORMAT:-"%H:%M:%S"}
+    LP_SHLVL_THRESHOLD=${LP_SHLVL_THRESHOLD:-2}
+    LP_HIDE_EMPTY_ERROR=${LP_HIDE_EMPTY_ERROR:-1}
     LP_PATH_LENGTH=${LP_PATH_LENGTH:-35}
     LP_PATH_KEEP=${LP_PATH_KEEP:-2}
     LP_PATH_CHARACTER_KEEP=${LP_PATH_CHARACTER_KEEP:-3}
     LP_PATH_METHOD=${LP_PATH_METHOD:-truncate_chars_from_path_left}
-    LP_PATH_VCS_ROOT=${LP_PATH_VCS_ROOT:-1}
+    LP_PATH_GIT_ROOT=${LP_PATH_GIT_ROOT:-1}
     LP_HOSTNAME_ALWAYS=${LP_HOSTNAME_ALWAYS:-0}
     LP_HOSTNAME_METHOD=${LP_HOSTNAME_METHOD:-short}
-    LP_USER_ALWAYS=${LP_USER_ALWAYS:-1}
+    LP_USER_ALWAYS=${LP_USER_ALWAYS:-0}
     LP_PS1=${LP_PS1:-""}
     LP_PS1_PREFIX=${LP_PS1_PREFIX:-""}
     LP_PS1_POSTFIX=${LP_PS1_POSTFIX:-""}
 
+    LP_ENABLE_DISPLAY=${LP_ENABLE_DISPLAY:-1}
+    LP_ENABLE_CHROOT=${LP_ENABLE_CHROOT:-1}
     LP_ENABLE_PERM=${LP_ENABLE_PERM:-1}
     LP_ENABLE_SHORTEN_PATH=${LP_ENABLE_SHORTEN_PATH:-1}
-    LP_ENABLE_DIRSTACK=${LP_ENABLE_DIRSTACK:-1}
-    LP_ENABLE_PROXY=${LP_ENABLE_PROXY:-1}
+    LP_ENABLE_DIRSTACK=${LP_ENABLE_DIRSTACK:-0}
+    LP_ENABLE_PROXY=${LP_ENABLE_PROXY:-0}
     LP_ENABLE_JOBS=${LP_ENABLE_JOBS:-1}
     LP_ENABLE_DETACHED_SESSIONS=${LP_ENABLE_DETACHED_SESSIONS:-1}
     LP_ENABLE_GIT=${LP_ENABLE_GIT:-1}
-    LP_ENABLE_OHMYGIT=${LP_ENABLE_OHMYGIT:-0}
+    LP_ENABLE_GIT_ROOT=${LP_ENABLE_GIT_ROOT:-0}
     LP_ENABLE_TIME=${LP_ENABLE_TIME:-0}
-    LP_ENABLE_VCS_ROOT=${LP_ENABLE_VCS_ROOT:-0}
-    LP_ENABLE_TITLE=${LP_ENABLE_TITLE:-0}
-    LP_ENABLE_SCREEN_TITLE=${LP_ENABLE_SCREEN_TITLE:-0}
-    LP_ENABLE_SUDO=${LP_ENABLE_SUDO:-0}
+    LP_ENABLE_TITLE=${LP_ENABLE_TITLE:-1}
+    LP_ENABLE_SCREEN_TITLE=${LP_ENABLE_SCREEN_TITLE:-1}
+    LP_ENABLE_SUDO=${LP_ENABLE_SUDO:-1}
     LP_ENABLE_COLOR=${LP_ENABLE_COLOR:-1}
     LP_ENABLE_ERROR=${LP_ENABLE_ERROR:-1}
-    LP_DISABLED_VCS_PATHS=( ${LP_DISABLED_VCS_PATHS[@]+"${LP_DISABLED_VCS_PATHS[@]}"} )
+    LP_ENABLE_SHLVL=${LP_ENABLE_SHLVL:-1}
+    LP_DISABLED_GIT_PATHS=( ${LP_DISABLED_GIT_PATHS[@]+"${LP_DISABLED_GIT_PATHS[@]}"} )
 
     LP_MARK_DEFAULT="${LP_MARK_DEFAULT:-$_LP_MARK_SYMBOL}"
     LP_MARK_PROXY="${LP_MARK_PROXY:-"↥"}"
@@ -192,17 +202,30 @@ __lp_source_config() {
     LP_MARK_GIT="${LP_MARK_GIT:-"±"}"
     LP_MARK_VCSH="${LP_MARK_VCSH:-"|"}"
     LP_MARK_DISABLED="${LP_MARK_DISABLED:-"⌀"}"
-    LP_MARK_UNTRACKED="${LP_MARK_UNTRACKED:-"*"}"
-    LP_MARK_STASH="${LP_MARK_STASH:-"+"}"
+    LP_MARK_GIT_HEAD_STATUS="${LP_MARK_GIT_HEAD_STATUS:-"⚡"}"
+    LP_MARK_GIT_DETACHED="${LP_MARK_GIT_DETACHED:-"#"}"
+    LP_MARK_GIT_DIVERGED="${LP_MARK_GIT_DIVERGED:-"⌥"}"
+    LP_MARK_GIT_FAST_FORWARD="${LP_MARK_GIT_FAST_FORWARD:-"»"}"
+    LP_MARK_GIT_PUSH="${LP_MARK_GIT_PUSH:-"⌅"}"
+    LP_MARK_GIT_STASH="${LP_MARK_GIT_STASH:-"✸"}"
+    LP_MARK_GIT_UNTRACKED="${LP_MARK_GIT_UNTRACKED:-"~"}"
+    LP_MARK_GIT_MODIFICATIONS="${LP_MARK_GIT_MODIFICATIONS:-"✎"}"
+    LP_MARK_GIT_DELETIONS="${LP_MARK_GIT_DELETIONS:-"−"}"
+    LP_MARK_GIT_ADDS="${LP_MARK_GIT_ADDS:-"+"}"
+    LP_MARK_GIT_CACHED_MODIFICATIONS="${LP_MARK_GIT_CACHED_MODIFICATIONS:-"±"}"
+    LP_MARK_GIT_CACHED_DELETIONS="${LP_MARK_GIT_CACHED_DELETIONS:-"×"}"
+    LP_MARK_GIT_COMMIT="${LP_MARK_GIT_COMMIT:-"➜"}"
+    LP_MARK_GIT_TAG="${LP_MARK_GIT_TAG:-"☗"}"
+    LP_MARK_GIT_MERGE="${LP_MARK_GIT_MERGE:-"۷"}"
+    LP_MARK_GIT_REBASE="${LP_MARK_GIT_REBASE:-"↯"}"
     LP_MARK_BRACKET_OPEN="${LP_MARK_BRACKET_OPEN:-"["}"
     LP_MARK_BRACKET_CLOSE="${LP_MARK_BRACKET_CLOSE:-"]"}"
     LP_MARK_SHORTEN_PATH="${LP_MARK_SHORTEN_PATH:-" … "}"
     LP_MARK_PREFIX="${LP_MARK_PREFIX:-" "}"
     LP_MARK_PERM="${LP_MARK_PERM:-":"}"
-    LP_MARK_VCS_OPEN="${LP_MARK_VCS_OPEN:-"("}"
-    LP_MARK_VCS_CLOSE="${LP_MARK_VCS_CLOSE:-")"}"
     LP_MARK_X11="${LP_MARK_X11:-"@"}"
     LP_MARK_DIRSTACK="${LP_MARK_DIRSTACK:-"⚞"}"
+    LP_MARK_SHLVL="${LP_MARK_SHLVL:-"└"}"
     LP_MARK_JOBS_SEPARATOR="${LP_MARK_JOBS_SEPARATOR:-"/"}"
 
     LP_COLOR_PATH=${LP_COLOR_PATH:-$NO_COL}
@@ -210,8 +233,9 @@ __lp_source_config() {
     lp_terminal_format 12 0 0 0 8
     LP_COLOR_PATH_SEPARATOR=${LP_COLOR_PATH_SEPARATOR:-$lp_terminal_format}
     LP_COLOR_PATH_SHORTENED=${LP_COLOR_PATH_SHORTENED:-$lp_terminal_format}
-    LP_COLOR_PATH_VCS_ROOT=${LP_COLOR_PATH_VCS_ROOT:-$BOLD_BLUE}
+    LP_COLOR_PATH_GIT_ROOT=${LP_COLOR_PATH_GIT_ROOT:-$BOLD_BLUE}
     LP_COLOR_PATH_LAST_DIR=${LP_COLOR_PATH_LAST_DIR:-$BOLD_WHITE}
+    LP_COLOR_DIRSTACK=${LP_COLOR_DIRSTACK:-$BOLD_YELLOW}
     LP_COLOR_PROXY=${LP_COLOR_PROXY:-$BOLD_BLUE}
     LP_COLOR_JOB_D=${LP_COLOR_JOB_D:-$YELLOW}
     LP_COLOR_JOB_R=${LP_COLOR_JOB_R:-$BOLD_YELLOW}
@@ -231,42 +255,28 @@ __lp_source_config() {
     LP_COLOR_X11_OFF=${LP_COLOR_X11_OFF:-$YELLOW}
     LP_COLOR_WRITE=${LP_COLOR_WRITE:-$GREEN}
     LP_COLOR_NOWRITE=${LP_COLOR_NOWRITE:-$RED}
-    LP_COLOR_UP=${LP_COLOR_UP:-$GREEN}
-    LP_COLOR_COMMITS=${LP_COLOR_COMMITS:-$YELLOW}
-    LP_COLOR_COMMITS_BEHIND=${LP_COLOR_COMMITS_BEHIND:-$BOLD_RED}
-    LP_COLOR_CHANGES=${LP_COLOR_CHANGES:-$RED}
-    LP_COLOR_DIFF=${LP_COLOR_DIFF:-$PURPLE}
+    LP_COLOR_GIT_HEAD_STATUS=${LP_COLOR_GIT_HEAD_STATUS:-$RED}
+    LP_COLOR_GIT_COMMITS=${LP_COLOR_GIT_COMMITS:-$YELLOW}
+    LP_COLOR_GIT_LOCAL=${LP_COLOR_GIT_LOCAL:-$BLUE}
+    LP_COLOR_GIT_UPSTREAM=${LP_COLOR_GIT_UPSTREAM:-$YELLOW}
+    LP_COLOR_GIT_DETACHED=${LP_COLOR_GIT_DETACHED:-$RED}
+    LP_COLOR_GIT_MARK_DETACHED=${LP_COLOR_GIT_MARK_DETACHED:-$BOLD_RED}
+    LP_COLOR_GIT_DIVERGED=${LP_COLOR_GIT_DIVERGED:-$BOLD_RED}
+    LP_COLOR_GIT_FAST_FORWARD=${LP_COLOR_GIT_FAST_FORWARD:-$BOLD_BLUE}
+    LP_COLOR_GIT_PUSH=${LP_COLOR_GIT_PUSH:-$BOLD_GREEN}
+    LP_COLOR_GIT_STASH=${LP_COLOR_GIT_STASH:-$YELLOW}
+    LP_COLOR_GIT_UNTRACKED=${LP_COLOR_GIT_UNTRACKED:-$BOLD_RED}
+    LP_COLOR_GIT_MODIFICATIONS=${LP_COLOR_GIT_MODIFICATIONS:-$BOLD_RED}
+    LP_COLOR_GIT_DELETIONS=${LP_COLOR_GIT_DELETIONS:-$BOLD_RED}
+    LP_COLOR_GIT_ADDS=${LP_COLOR_GIT_ADDS:-$BOLD_BLUE}
+    LP_COLOR_GIT_CACHED_MODIFICATIONS=${LP_COLOR_GIT_CACHED_MODIFICATIONS:-$BOLD_BLUE}
+    LP_COLOR_GIT_CACHED_DELETIONS=${LP_COLOR_GIT_CACHED_DELETIONS:-$BOLD_BLUE}
+    LP_COLOR_GIT_COMMIT=${LP_COLOR_GIT_COMMIT:-$GREEN}
+    LP_COLOR_GIT_TAG=${LP_COLOR_GIT_TAG:-$PURPLE}
     LP_COLOR_TIME=${LP_COLOR_TIME:-$BLUE}
     LP_COLOR_IN_MULTIPLEXER=${LP_COLOR_IN_MULTIPLEXER:-$BOLD_BLUE}
     LP_COLOR_IN_LOCAL=${LP_COLOR_IN_LOCAL:-$WHITE}
-
-    if [[ ${1-} == --no-config ]]; then
-        return
-    fi
-
-    local configfile
-
-    # System config
-    configfile="/etc/xdg/liquidprompt/liquidpromptrc"
-    [[ -f "$configfile" ]] && source "$configfile"
-
-    # Local config
-    configfile="${XDG_CONFIG_HOME:-"$HOME/.config"}/liquidprompt/liquidpromptrc"
-    [[ -f "$configfile" ]] && source "$configfile"
-
-    # Deprecations and compatibility shims
-
-    if [[ $LP_PATH_KEEP == "-1" ]]; then
-        echo "liquidprompt: LP_PATH_KEEP set to '-1' is deprecated. Update your config to set
-              LP_PATH_METHOD='truncate_to_last_dir' instead." >&2
-        LP_PATH_METHOD="truncate_to_last_dir"
-    fi
-
-    if [[ ${LP_ENABLE_FQDN-} == 1 ]]; then
-        echo "liquidprompt: LP_ENABLE_FQDN is deprecated. Update your config to set LP_HOSTNAME_METHOD=full
-              or LP_HOSTNAME_METHOD=fqdn instead." >&2
-        LP_HOSTNAME_METHOD="full"
-    fi
+    LP_COLOR_SHLVL=${LP_COLOR_SHLVL:-$BOLD_GREEN}
 }
 
 # Initialize features based on the user config.
@@ -332,10 +342,11 @@ lp_activate() {
     _lp_require_tool TIME date
     _lp_require_tool GIT git
 
-    _LP_ENABLED_VCSS=()
-    (( LP_ENABLE_GIT )) && _LP_ENABLED_VCSS+=(git)
-
     unset -f _lp_require_tool
+
+    _LP_ENABLE_PREEXEC=$((
+        LP_HIDE_EMPTY_ERROR \
+    ))
 
     if (( LP_ENABLE_DETACHED_SESSIONS )); then
         command -v screen >/dev/null ; _LP_ENABLE_SCREEN=$(( ! $? ))
@@ -376,8 +387,8 @@ lp_activate() {
         fi
     else # root!
         LP_ENABLE_SUDO=0
-        if (( ! LP_ENABLE_VCS_ROOT )); then
-            LP_DISABLED_VCS_PATHS=("/")
+        if (( ! LP_ENABLE_GIT_ROOT )); then
+            LP_DISABLED_GIT_PATHS=("/")
         fi
 
         LP_MARK_DEFAULT='#'
@@ -514,7 +525,7 @@ __lp_end_path_left_shortening() {
 _lp_path_format() {
     local path_format="${1-$LP_COLOR_PATH}"
     local last_directory_format="${2:-$path_format}"
-    local vcs_root_format="${3:-$last_directory_format}"
+    local git_root_format="${3:-$last_directory_format}"
     local shortened_directory_format="${4:-$path_format}"
     local separator="${5-"/"}"
     local separator_format="${6-}"
@@ -530,11 +541,11 @@ _lp_path_format() {
 
     local -i path_length="${#display_path}"
 
-    local lp_vcs_root lp_vcs_dir lp_vcs_type lp_vcs_subtype
-    local vcs_root_directory=
-    if (( LP_PATH_VCS_ROOT )) && _lp_find_vcs; then
-        __lp_pwd_tilde "$lp_vcs_root"
-        vcs_root_directory=$lp_pwd_tilde
+    local lp_git_root lp_git_dir lp_git_type lp_git_subtype
+    local git_root_directory=
+    if (( LP_PATH_GIT_ROOT )) && _lp_find_git; then
+        __lp_pwd_tilde "$lp_git_root"
+        git_root_directory=$lp_pwd_tilde
     fi
 
     if [[ $path_length -eq 1 || $LP_PATH_METHOD == "truncate_to_last_dir" ]]; then
@@ -547,8 +558,8 @@ _lp_path_format() {
 
         __lp_escape "$lp_path"
 
-        if [[ $display_path == "$vcs_root_directory" ]]; then
-            lp_path_format="${vcs_root_format}${ret}"
+        if [[ $display_path == "$git_root_directory" ]]; then
+            lp_path_format="${git_root_format}${ret}"
         else
             lp_path_format="${last_directory_format}${ret}"
         fi
@@ -589,12 +600,12 @@ _lp_path_format() {
         current_path+=${current_directory}
         path_to_proccess=${path_to_proccess#*/}
 
-        if [[ $current_path == "$vcs_root_directory" ]]; then
+        if [[ $current_path == "$git_root_directory" ]]; then
             __lp_end_path_left_shortening
             # No shortening
             lp_path+=$current_directory
             __lp_escape "$current_directory"
-            lp_path_format+="${vcs_root_format}${ret}"
+            lp_path_format+="${git_root_format}${ret}"
         elif [[ -z $path_to_proccess ]]; then
             __lp_end_path_left_shortening
             # Last directory
@@ -689,6 +700,8 @@ _lp_path_format() {
 
 # If we are connected with a X11 support
 _lp_connected_display() {
+    (( LP_ENABLE_DISPLAY )) || return 2
+
     [[ -n "${DISPLAY-}" ]]
 }
 
@@ -710,6 +723,8 @@ _lp_connection() {
 }
 
 _lp_chroot() {
+    (( LP_ENABLE_CHROOT )) || return 2
+
     if [[ -r /etc/debian_chroot ]]; then
         IFS= read -r lp_chroot </etc/debian_chroot
         if [[ -n "$lp_chroot" ]]; then
@@ -918,6 +933,20 @@ _lp_dirstack_color() {
     lp_dirstack_color="${LP_COLOR_DIRSTACK}${LP_MARK_DIRSTACK}${lp_dirstack}${NO_COL}"
 }
 
+_lp_shell_level() {
+    (( LP_ENABLE_SHLVL )) || return 2
+
+    lp_shell_level=${SHLVL:-1}
+
+    (( lp_shell_level >= LP_SHLVL_THRESHOLD ))
+}
+
+_lp_shell_level_color() {
+    _lp_shell_level || return "$?"
+
+    lp_shell_level_color="${LP_COLOR_SHLVL}${LP_MARK_SHLVL}${lp_shell_level}${NO_COL}"
+}
+
 ################
 # Related jobs #
 ################
@@ -978,13 +1007,13 @@ _lp_jobcount_color() {
     [[ -n "$lp_jobcount_color" ]]
 }
 
-######################
-# VCS branch display #
-######################
+####################
+# Git info display #
+####################
 
-_lp_are_vcs_enabled() {
+_lp_is_git_enabled() {
     local _path
-    for _path in ${LP_DISABLED_VCS_PATHS[@]+"${LP_DISABLED_VCS_PATHS[@]}"}; do
+    for _path in ${LP_DISABLED_GIT_PATHS[@]+"${LP_DISABLED_GIT_PATHS[@]}"}; do
         if [[ -n "$_path" && "$PWD" == "$_path"* ]]; then
             return 1
         fi
@@ -992,436 +1021,264 @@ _lp_are_vcs_enabled() {
     return 0
 }
 
-# Search upwards through a directory structure looking for a sign of a VCS
-# repository. Used to avoid invoking VCS binaries to discover if in a repo.
-_lp_find_vcs() {
-    if ! _lp_are_vcs_enabled; then
-        lp_vcs_type="disabled"
-        lp_vcs_root=""
-        return 2
-    fi
+_lp_find_git() {
+    if _lp_git_active; then
+        if _lp_is_git_enabled; then
+            lp_git_dir="$(\git rev-parse --git-dir 2>/dev/null)"
+            lp_git_root="$(\git rev-parse --show-toplevel 2>/dev/null)"
 
-    lp_vcs_type=""
-
-    # Based on the Git behavior here:
-    # https://git-scm.com/book/en/v2/Git-Internals-Environment-Variables
-    if [[ -d "${GIT_DIR-}" ]]; then
-        lp_vcs_type="git"
-        lp_vcs_dir="$GIT_DIR"
-        lp_vcs_root="${GIT_WORK_TREE:-"$(\git rev-parse --show-toplevel 2>/dev/null)"}"
-    fi
-
-    if [[ -z $lp_vcs_type ]]; then
-        local vcs
-        lp_vcs_root="$PWD"
-        while [[ -n "$lp_vcs_root" ]]; do
-            if (( LP_ENABLE_GIT )) && [[ -d "$lp_vcs_root/.git" ]]; then
-                lp_vcs_type="git"
-                lp_vcs_dir="$lp_vcs_root/.git"
-                break
+            if [[ -n "${VCSH_DIRECTORY-}" ]]; then
+                lp_git_type="vcsh"
+            elif [[ -d "${lp_git_dir}/svn" ]]; then
+                lp_git_type="svn"
+            else
+                lp_git_type="git"
             fi
-            if (( LP_ENABLE_GIT )) && [[ -f "$lp_vcs_root/.git" ]]; then
-                lp_vcs_type="git"
-                lp_vcs_dir="$(\git rev-parse --git-dir 2>/dev/null)"
-                break
-            fi
-
-            lp_vcs_root="${lp_vcs_root%/*}"
-        done
-    fi
-
-    if [[ $lp_vcs_type == git ]]; then
-        if [[ -n "${VCSH_DIRECTORY-}" ]]; then
-            lp_vcs_subtype="vcsh"
-        elif [[ -d "${lp_vcs_dir}/svn" ]]; then
-            lp_vcs_subtype="svn"
         else
-            lp_vcs_subtype=""
-        fi
-    fi
+            lp_git_dir=""
+            lp_git_root=""
+            lp_git_type="disabled"
 
-    if [[ -z $lp_vcs_type ]]; then
-        lp_vcs_root=""
+            return 2
+        fi
+    else
+        lp_git_dir=""
+        lp_git_root=""
+        lp_git_type=""
+
         return 1
     fi
 }
 
-# Set the prompt mark depending on the current VCS.
+# Set the prompt mark.
 _lp_smart_mark() {
-    local subtype="${2:-"${lp_vcs_subtype-}"}"
-    case "${1:-$lp_vcs_type}" in
-        git)
-            if [[ $subtype == vcsh ]]; then
-                lp_smart_mark="$LP_MARK_VCSH${VCSH_DIRECTORY-}$LP_MARK_GIT$LP_MARK_VCSH"
-            elif [[ $subtype == svn ]]; then
-                lp_smart_mark="$LP_MARK_GIT$LP_MARK_SVN"
-            else
-                lp_smart_mark="$LP_MARK_GIT"
-            fi
-            ;;
+    case "${1:-$lp_git_type}" in
+        git)      lp_smart_mark="$LP_MARK_GIT";;
+        svn)      lp_smart_mark="$LP_MARK_GIT$LP_MARK_SVN";;
+        vcsh)     lp_smart_mark="$LP_MARK_VCSH${VCSH_DIRECTORY-}$LP_MARK_GIT$LP_MARK_VCSH";;
         disabled) lp_smart_mark="$LP_MARK_DISABLED";;
         *)        lp_smart_mark="$LP_MARK_DEFAULT";;
     esac
 }
 
-# GENERIC VCS #
-
 # Create a formatted string describing the status of the repo.
-_lp_vcs_details_color() {
-    local branch
-    if _lp_vcs_branch; then
-        branch="$lp_vcs_branch"
-    elif _lp_vcs_tag; then
-        branch="tag: $lp_vcs_tag"
-    else
-        _lp_vcs_commit_id
-        branch="${lp_vcs_commit_id:0:7}"
+_lp_git_details_color() {
+    lp_git_details_color=""
+
+    if _lp_git_has_stash; then
+        lp_git_details_color+="${LP_COLOR_GIT_STASH}${LP_MARK_GIT_STASH}${NO_COL} "
     fi
 
-    lp_vcs_details_color="$LP_COLOR_UP"
+    _lp_git_status
+    if $lp_git_has_untracked_files; then
+        lp_git_details_color+="${LP_COLOR_GIT_UNTRACKED}${LP_MARK_GIT_UNTRACKED}${NO_COL} "
+    fi
+    if $lp_git_has_modifications; then
+        lp_git_details_color+="${LP_COLOR_GIT_MODIFICATIONS}${LP_MARK_GIT_MODIFICATIONS}${NO_COL} "
+    fi
+    if $lp_git_has_deletions; then
+        lp_git_details_color+="${LP_COLOR_GIT_DELETIONS}${LP_MARK_GIT_DELETIONS}${NO_COL} "
+    fi
+    if $lp_git_has_adds; then
+        lp_git_details_color+="${LP_COLOR_GIT_ADDS}${LP_MARK_GIT_ADDS}${NO_COL} "
+    fi
+    if $lp_git_has_modifications_cached; then
+        lp_git_details_color+="${LP_COLOR_GIT_CACHED_MODIFICATIONS}${LP_MARK_GIT_CACHED_MODIFICATIONS}${NO_COL} "
+    fi
+    if $lp_git_has_deletions_cached; then
+        lp_git_details_color+="${LP_COLOR_GIT_CACHED_DELETIONS}${LP_MARK_GIT_CACHED_DELETIONS}${NO_COL} "
+    fi
+    if $lp_git_ready_to_commit; then
+        lp_git_details_color+="${LP_COLOR_GIT_COMMIT}${LP_MARK_GIT_COMMIT}${NO_COL} "
+    fi
 
-    local has_commit=
-    if _lp_vcs_commits_off_remote; then
-        lp_vcs_details_color="$LP_COLOR_COMMITS_BEHIND"
-        if [[ "$lp_vcs_commit_ahead" -ne "0" && "$lp_vcs_commit_behind" -ne "0" ]]; then
-            has_commit="${LP_COLOR_COMMITS}+$lp_vcs_commit_ahead${NO_COL}/${LP_COLOR_COMMITS_BEHIND}-$lp_vcs_commit_behind${NO_COL}"
-        elif [[ "$lp_vcs_commit_ahead" -ne "0" ]]; then
-            has_commit="${LP_COLOR_COMMITS}$lp_vcs_commit_ahead${NO_COL}"
-            lp_vcs_details_color="$LP_COLOR_COMMITS"
-        elif [[ "$lp_vcs_commit_behind" -ne "0" ]]; then
-            has_commit="${LP_COLOR_COMMITS_BEHIND}-$lp_vcs_commit_behind${NO_COL}"
+    if _lp_git_head_status; then
+        lp_git_details_color+="${LP_COLOR_GIT_HEAD_STATUS}${LP_MARK_GIT_HEAD_STATUS} ${lp_git_head_status}"
+        if [[ -n "${lp_git_head_details-}" ]]; then
+            lp_git_details_color+=" (${lp_git_head_details})"
         fi
+        lp_git_details_color+="${NO_COL} "
     fi
 
-    local ret has_lines=
-    if _lp_vcs_uncommitted_files; then
-        _lp_vcs_unstaged_lines; ret=$?
-        # Only show unstaged changes if the VCS supports staging, otherwise
-        # show uncommitted changes
-        if (( ret == 0 )); then
-            has_lines="+$lp_vcs_unstaged_i_lines/-$lp_vcs_unstaged_d_lines"
-        elif (( ret == 1 )); then
-            has_lines="+0/-0"
+    if [[ -n $lp_git_details_color ]]; then
+        lp_git_details_color+="| "
+    fi
+
+    if _lp_git_branch; then
+        if [[ -n "$lp_git_remote" ]]; then
+            if [[ "$lp_git_commit_behind" -gt 0 && "$lp_git_commit_ahead" -gt 0 ]]; then
+                lp_git_details_color+="${LP_COLOR_GIT_COMMITS}-${lp_git_commit_behind}${NO_COL} "
+                lp_git_details_color+="${LP_COLOR_GIT_DIVERGED}${LP_MARK_GIT_DIVERGED}${NO_COL} "
+                lp_git_details_color+="${LP_COLOR_GIT_COMMITS}+${lp_git_commit_ahead}${NO_COL} "
+            elif [[ "$lp_git_commit_behind" -gt 0 ]]; then
+                lp_git_details_color+="${LP_COLOR_GIT_COMMITS}-${lp_git_commit_behind}${NO_COL} "
+                lp_git_details_color+="${LP_COLOR_GIT_FAST_FORWARD}${LP_MARK_GIT_FAST_FORWARD}${NO_COL} "
+            elif [[ "$lp_git_commit_ahead" -gt 0 ]]; then
+                lp_git_details_color+="${LP_COLOR_GIT_PUSH}${LP_MARK_GIT_PUSH}${NO_COL} "
+                lp_git_details_color+="${LP_COLOR_GIT_COMMITS}+${lp_git_commit_ahead}${NO_COL} "
+            fi
+
+            lp_git_details_color+="(${LP_COLOR_GIT_LOCAL}${lp_git_branch}${NO_COL}"
+            if [[ "$lp_git_pull_type" == "rebase" ]]; then
+                lp_git_details_color+=" ${LP_MARK_GIT_REBASE} "
+            else
+                lp_git_details_color+=" ${LP_MARK_GIT_MERGE} "
+            fi
+            lp_git_details_color+="${LP_COLOR_GIT_UPSTREAM}${lp_git_remote}${NO_COL})"
         else
-            _lp_vcs_uncommitted_lines
-            has_lines="+$lp_vcs_uncommitted_i_lines/-$lp_vcs_uncommitted_d_lines"
+            lp_git_details_color+="${LP_COLOR_GIT_LOCAL}(${lp_git_branch})${NO_COL}"
         fi
-        lp_vcs_details_color="$LP_COLOR_CHANGES"
+    else
+        lp_git_details_color+="${LP_COLOR_GIT_DETACHED}(${NO_COL}"
+        lp_git_details_color+="${LP_COLOR_GIT_MARK_DETACHED}${LP_MARK_GIT_DETACHED}${NO_COL}"
+        lp_git_details_color+="${LP_COLOR_GIT_DETACHED}${lp_git_commit_id})${NO_COL}"
     fi
 
-    lp_vcs_details_color+="$branch"
-    if [[ -n "$has_lines" || -n "$has_commit" ]]; then
-        lp_vcs_details_color+="${NO_COL}${LP_MARK_VCS_OPEN}"
-        if [[ -n "$has_lines" ]]; then
-            lp_vcs_details_color+="${LP_COLOR_DIFF}${has_lines}${NO_COL}${has_commit:+,}"
-        fi
-        lp_vcs_details_color+="${has_commit}${LP_MARK_VCS_CLOSE}"
+    if _lp_git_tag; then
+        lp_git_details_color+=" ${LP_COLOR_GIT_TAG}${LP_MARK_GIT_TAG} $lp_git_tag${NO_COL}"
     fi
-
-    if _lp_vcs_stash_count; then
-        lp_vcs_details_color+="$LP_COLOR_COMMITS$LP_MARK_STASH"
-    fi
-
-    if _lp_vcs_untracked_files; then
-        lp_vcs_details_color+="$LP_COLOR_CHANGES$LP_MARK_UNTRACKED"
-    fi
-
-    if _lp_vcs_head_status; then
-        lp_vcs_details_color+=" $LP_COLOR_CHANGES$lp_vcs_head_status"
-        if [[ -n "${lp_vcs_head_details-}" ]]; then
-            lp_vcs_details_color+="(${lp_vcs_head_details})"
-        fi
-    fi
-
-    lp_vcs_details_color+="$NO_COL"
 }
 
-# Check if the detected VCS is enabled in Liquid Prompt and the current
-# directory is a valid repository of that type.
-_lp_vcs_active() {
-    "_lp_${lp_vcs_type}_active"
-}
-
-# Get the branch name of the repo in the current directory.
-_lp_vcs_branch() {
-    "_lp_${lp_vcs_type}_branch"
-}
-
-# Get a tag name of the repo in the current directory.
-_lp_vcs_tag() {
-    "_lp_${lp_vcs_type}_tag"
-}
-
-# Get the current commit string for the repo in the current directory.
-_lp_vcs_commit_id() {
-    "_lp_${lp_vcs_type}_commit_id"
-}
-
-# Get additional information if the repo is in a special or unusual state.
-_lp_vcs_head_status() {
-    "_lp_${lp_vcs_type}_head_status"
-    # TODO: set lp_vcs_head_details if not set?
-}
-
-# Get the number of stashes in the repo.
-_lp_vcs_stash_count() {
-    "_lp_${lp_vcs_type}_stash_count"
-}
-
-# Get the number of commits ahead and behind the upstream branch.
-_lp_vcs_commits_off_remote() {
-    "_lp_${lp_vcs_type}_commits_off_remote"
-}
-
-# Get the number of untracked aka extra files in the repo.
-_lp_vcs_untracked_files() {
-    "_lp_${lp_vcs_type}_untracked_files"
-}
-
-# Get the number of changed files compared to the last or checked out commit.
-_lp_vcs_uncommitted_files() {
-    "_lp_${lp_vcs_type}_uncommitted_files"
-}
-
-# Get the number of changed lines compared to the last or checked out commit.
-_lp_vcs_uncommitted_lines() {
-    "_lp_${lp_vcs_type}_uncommitted_lines"
-}
-
-# Get the number of changed files compared to staging.
-_lp_vcs_unstaged_files() {
-    "_lp_${lp_vcs_type}_unstaged_files"
-}
-
-# Get the number of changed lines compared to staging.
-_lp_vcs_unstaged_lines() {
-    "_lp_${lp_vcs_type}_unstaged_lines"
-}
-
-# Get the number of changed files in staging compared to the last or checked out commit.
-_lp_vcs_staged_files() {
-    "_lp_${lp_vcs_type}_staged_files"
-}
-
-# Get the number of changed lines in staging compared to the last or checked out commit.
-_lp_vcs_staged_lines() {
-    "_lp_${lp_vcs_type}_staged_lines"
-}
-
-# GIT #
-
-# Check if Git is enabled in Liquid Prompt and the current directory is a valid
-# Git repository.
 _lp_git_active() {
     (( LP_ENABLE_GIT )) || return 2
     \git rev-parse --is-inside-work-tree >/dev/null 2>&1 || return 1
 }
 
-# Get the branch name of the Git repo in the current directory.
-_lp_git_branch() {
-    local branch ret
-    # Recent versions of Git support the --short option for symbolic-ref, but
-    # not 1.7.9 (Ubuntu 12.04)
-    if branch="$(\git symbolic-ref -q HEAD 2>/dev/null)"; then
-        __lp_escape "${branch#refs/heads/}"
-        lp_vcs_branch="$ret"
+_lp_git_has_stash() {
+    \git rev-parse --verify -q refs/stash >/dev/null || return 1
+}
+
+_lp_git_status() {
+    local git_status="$(LC_ALL=C \git status --porcelain 2>/dev/null)"
+
+    if [[ $git_status =~ ($'\n'|^)[?] ]]; then
+        lp_git_has_untracked_files=true
     else
-        return 1
+        lp_git_has_untracked_files=false
+    fi
+
+    if [[ $git_status =~ ($'\n'|^).M ]]; then
+        lp_git_has_modifications=true
+    else
+        lp_git_has_modifications=false
+    fi
+
+    if [[ $git_status =~ ($'\n'|^)M ]]; then
+        lp_git_has_modifications_cached=true
+    else
+        lp_git_has_modifications_cached=false
+    fi
+
+    if [[ $git_status =~ ($'\n'|^)A ]]; then
+        lp_git_has_adds=true
+    else
+        lp_git_has_adds=false
+    fi
+
+    if [[ $git_status =~ ($'\n'|^).D ]]; then
+        lp_git_has_deletions=true
+    else
+        lp_git_has_deletions=false
+    fi
+
+    if [[ $git_status =~ ($'\n'|^)D ]]; then
+        lp_git_has_deletions_cached=true
+    else
+        lp_git_has_deletions_cached=false
+    fi
+
+    if [[ $git_status =~ ($'\n'|^)[MAD] && ! $git_status =~ ($'\n'|^).[MAD?] ]]; then
+        lp_git_ready_to_commit=true
+    else
+        lp_git_ready_to_commit=false
     fi
 }
 
-# Get a tag name of the Git repo in the current directory.
-_lp_git_tag() {
-    local tag ret
-    if tag="$(\git describe --tags --exact-match 2>/dev/null)"; then
-        __lp_escape "$tag"
-        lp_vcs_tag="$ret"
-    else
-        return 1
-    fi
-}
-
-# Get the current full commit hash of the repo in the current directory.
-_lp_git_commit_id() {
-    lp_vcs_commit_id="$(\git rev-parse -q HEAD 2>/dev/null)"
-}
-
-# Get additional information if HEAD is in merging, rebasing or cherry-picking state.
 _lp_git_head_status() {
     local IFS="" step total
 
-    if [[ -f "${lp_vcs_dir}/MERGE_HEAD" ]]; then
-        lp_vcs_head_status="MERGING"
-    elif [[ -d "${lp_vcs_dir}/rebase-merge" ]]; then
-        test -r "${lp_vcs_dir}/rebase-merge/msgnum" && read -r step <"${lp_vcs_dir}/rebase-merge/msgnum"
-        test -r "${lp_vcs_dir}/rebase-merge/end" && read -r total <"${lp_vcs_dir}/rebase-merge/end"
-        if [[ -f "${lp_vcs_dir}/rebase-merge/interactive" ]]; then
-            lp_vcs_head_status="REBASE-i"
+    if [[ -f "${lp_git_dir}/MERGE_HEAD" ]]; then
+        lp_git_head_status="merge"
+    elif [[ -d "${lp_git_dir}/rebase-merge" ]]; then
+        test -r "${lp_git_dir}/rebase-merge/msgnum" && read -r step <"${lp_git_dir}/rebase-merge/msgnum"
+        test -r "${lp_git_dir}/rebase-merge/end" && read -r total <"${lp_git_dir}/rebase-merge/end"
+        if [[ -f "${lp_git_dir}/rebase-merge/interactive" ]]; then
+            lp_git_head_status="rebase -i"
         else
-            lp_vcs_head_status="REBASE-m"
+            lp_git_head_status="rebase -m"
         fi
-    elif [[ -d "${lp_vcs_dir}/rebase-apply" ]]; then
-        test -r "${lp_vcs_dir}/rebase-apply/next" && read -r step <"${lp_vcs_dir}/rebase-apply/next"
-        test -r "${lp_vcs_dir}/rebase-apply/last" && read -r total <"${lp_vcs_dir}/rebase-apply/last"
-        if [[ -f "${lp_vcs_dir}/rebase-apply/rebasing" ]]; then
-            lp_vcs_head_status="REBASE"
-        elif [[ -f "${lp_vcs_dir}/rebase-apply/applying" ]]; then
-            lp_vcs_head_status="AM"
+    elif [[ -d "${lp_git_dir}/rebase-apply" ]]; then
+        test -r "${lp_git_dir}/rebase-apply/next" && read -r step <"${lp_git_dir}/rebase-apply/next"
+        test -r "${lp_git_dir}/rebase-apply/last" && read -r total <"${lp_git_dir}/rebase-apply/last"
+        if [[ -f "${lp_git_dir}/rebase-apply/rebasing" ]]; then
+            lp_git_head_status="rebase"
+        elif [[ -f "${lp_git_dir}/rebase-apply/applying" ]]; then
+            lp_git_head_status="am"
         else
-            lp_vcs_head_status="AM/REBASE"
+            lp_git_head_status="am/rebase"
         fi
-    elif [[ -f "${lp_vcs_dir}/CHERRY_PICK_HEAD" ]]; then
-        lp_vcs_head_status="CHERRY-PICKING"
-    elif [[ -f "${lp_vcs_dir}/REVERT_HEAD" ]]; then
-        lp_vcs_head_status="REVERTING"
-    elif [[ -f "${lp_vcs_dir}/BISECT_START" ]]; then
-        lp_vcs_head_status="BISECTING"
+    elif [[ -f "${lp_git_dir}/CHERRY_PICK_HEAD" ]]; then
+        lp_git_head_status="cherry-pick"
+    elif [[ -f "${lp_git_dir}/REVERT_HEAD" ]]; then
+        lp_git_head_status="revert"
+    elif [[ -f "${lp_git_dir}/BISECT_START" ]]; then
+        lp_git_head_status="bisect"
     else
         return 1
     fi
 
     if [[ -n "$step" && -n "$total" ]]; then
-        lp_vcs_head_details="${step}/${total}"
+        lp_git_head_details="${step}/${total}"
     else
-        lp_vcs_head_details=""
+        lp_git_head_details=""
     fi
 }
 
-# Get the number of Git stashes in the repo.
-_lp_git_stash_count() {
-    lp_vcs_stash_count="$(\git rev-list --walk-reflogs --count refs/stash 2>/dev/null)"
-    (( lp_vcs_stash_count ))
-}
+_lp_git_tag() {
+    lp_git_tag=""
 
-# Count commits behind and ahead on the remote tracking branch of the current
-# local branch.
-_lp_git_commits_off_remote() {
-    local counts
-    # The "@{upstream}" notation was added in Git 1.7.0, so this should work for everyone
-    counts="$(\git rev-list --count --left-right '@{upstream}...HEAD' 2>/dev/null)" || return 2
-    IFS=$' \t' read -r lp_vcs_commit_behind lp_vcs_commit_ahead <<<"$counts"
-    (( lp_vcs_commit_behind || lp_vcs_commit_ahead ))
-}
+    local tag ret
 
-# Get the number of untracked files in the repo.
-_lp_git_untracked_files() {
-    lp_vcs_untracked_files="$(LC_ALL=C \git status --porcelain 2>/dev/null | GREP_OPTIONS='' \grep -c '^??')"
-    (( lp_vcs_untracked_files ))
-}
-
-# Get the number of changed files.
-__lp_git_diff_shortstat_files() {  # diff_shortstat
-    local stat="$1"
-
-    if [[ "$stat" = *changed* ]]; then
-        stat="${stat/ file*}"
-        lp_git_diff_shortstat_files=${stat//[$' \t']}
+    if tag="$(\git describe --tags --exact-match 2>/dev/null)"; then
+        __lp_escape "$tag"
+        lp_git_tag="$ret"
     else
         return 1
     fi
 }
 
-# Get the number of changed lines.
-__lp_git_diff_shortstat_lines() {  # diff_shortstat
-    local stat="$1"
+_lp_git_branch() {
+    lp_git_branch=""
+    lp_git_remote=""
+    lp_git_commit_id=""
+    lp_git_commit_ahead=""
+    lp_git_commit_behind=""
+    lp_git_pull_type="merge"
 
-    stat=${stat/*changed, /} # removing "n file(s) changed"
+    local branch remote pull_rebase counts ret
 
-    if [[ "$stat" = *insertion* ]]; then
-        lp_git_diff_shortstat_i_lines=${stat/ inser*}
+    if branch="$(\git symbolic-ref --short -q HEAD 2>/dev/null)"; then
+        __lp_escape "$branch"
+        lp_git_branch="$ret"
+
+        if remote="$(\git rev-parse --symbolic-full-name --abbrev-ref @{upstream} 2>/dev/null)"; then
+            __lp_escape "${remote//\/$branch/}"
+            lp_git_remote="$ret"
+        fi
+
+        pull_rebase=$(\git config --get branch.${branch}.rebase 2>/dev/null)
+        [[ -z "$pull_rebase" ]] && pull_rebase=$(\git config --get pull.rebase 2>/dev/null)
+        if [[ -n "$pull_rebase" && "$pull_rebase" != "false" ]]; then
+            lp_git_pull_type="rebase"
+        fi
+
+        counts="$(\git rev-list --count --left-right 'HEAD...@{upstream}' 2>/dev/null)" || return 2
+        IFS=$' \t' read -r lp_git_commit_ahead lp_git_commit_behind <<<"$counts"
     else
-        lp_git_diff_shortstat_i_lines=0
+        lp_git_commit_id="$(\git rev-parse --short -q HEAD 2>/dev/null)"
+
+        return 1
     fi
-
-    if [[ "$stat" = *deletion* ]]; then
-        stat=${stat/*\(+\), }
-        lp_git_diff_shortstat_d_lines=${stat/ del*/}
-    else
-        lp_git_diff_shortstat_d_lines=0
-    fi
-
-    (( lp_git_diff_shortstat_i_lines || lp_git_diff_shortstat_d_lines ))
-}
-
-__lp_git_diff_shortstat_uncommitted() {
-    if [[ -z ${_lp_git_diff_shortstat_uncommitted-} ]]; then
-        _lp_git_diff_shortstat_uncommitted="$(LC_ALL=C \git diff --shortstat HEAD -- 2>/dev/null)"
-    fi
-}
-
-# Get the number of changed files compared to HEAD.
-_lp_git_uncommitted_files() {
-    __lp_git_diff_shortstat_uncommitted
-
-    local lp_git_diff_shortstat_files
-    __lp_git_diff_shortstat_files "$_lp_git_diff_shortstat_uncommitted" || return "$?"
-
-    lp_vcs_uncommitted_files=$lp_git_diff_shortstat_files
-}
-
-# Get the number of changed lines compared to HEAD.
-_lp_git_uncommitted_lines() {
-    __lp_git_diff_shortstat_uncommitted
-
-    local lp_git_diff_shortstat_i_lines lp_git_diff_shortstat_d_lines
-    __lp_git_diff_shortstat_lines "$_lp_git_diff_shortstat_uncommitted" || return "$?"
-
-    lp_vcs_uncommitted_i_lines=$lp_git_diff_shortstat_i_lines
-    lp_vcs_uncommitted_d_lines=$lp_git_diff_shortstat_d_lines
-}
-
-__lp_git_diff_shortstat_unstaged() {
-    if [[ -z ${_lp_git_diff_shortstat_unstaged-} ]]; then
-        _lp_git_diff_shortstat_unstaged="$(LC_ALL=C \git diff --shortstat 2>/dev/null)"
-    fi
-}
-
-# Get the number of changed files compared to staging.
-_lp_git_unstaged_files() {
-    __lp_git_diff_shortstat_unstaged
-
-    local lp_git_diff_shortstat_files
-    __lp_git_diff_shortstat_files "$_lp_git_diff_shortstat_unstaged" || return "$?"
-
-    lp_vcs_unstaged_files=$lp_git_diff_shortstat_files
-}
-
-# Get the number of changed lines compared to staging.
-_lp_git_unstaged_lines() {
-    __lp_git_diff_shortstat_unstaged
-
-    local lp_git_diff_shortstat_i_lines lp_git_diff_shortstat_d_lines
-    __lp_git_diff_shortstat_lines "$_lp_git_diff_shortstat_unstaged" || return "$?"
-
-    lp_vcs_unstaged_i_lines=$lp_git_diff_shortstat_i_lines
-    lp_vcs_unstaged_d_lines=$lp_git_diff_shortstat_d_lines
-}
-
-__lp_git_diff_shortstat_staged() {
-    if [[ -z ${_lp_git_diff_shortstat_staged-} ]]; then
-        _lp_git_diff_shortstat_staged="$(LC_ALL=C \git diff --shortstat --cached 2>/dev/null)"
-    fi
-}
-
-# Get the number of changed files in staging compared to HEAD.
-_lp_git_staged_files() {
-    __lp_git_diff_shortstat_staged
-
-    local lp_git_diff_shortstat_files
-    __lp_git_diff_shortstat_files "$_lp_git_diff_shortstat_staged" || return "$?"
-
-    lp_vcs_staged_files=$lp_git_diff_shortstat_files
-}
-
-# Get the number of changed lines in staging compared to HEAD.
-_lp_git_staged_lines() {
-    __lp_git_diff_shortstat_staged
-
-    local lp_git_diff_shortstat_i_lines lp_git_diff_shortstat_d_lines
-    __lp_git_diff_shortstat_lines "$_lp_git_diff_shortstat_staged" || return "$?"
-
-    lp_vcs_staged_i_lines=$lp_git_diff_shortstat_i_lines
-    lp_vcs_staged_d_lines=$lp_git_diff_shortstat_d_lines
 }
 
 ##########
@@ -1435,12 +1292,6 @@ _lp_formatted_title() {
     local ret
     __lp_strip_escapes "${1-}"
     _lp_generated_title="$ret"
-}
-
-_lp_raw_title() {
-    (( LP_ENABLE_TITLE )) || return 2
-
-    _lp_generated_title=${1-}
 }
 
 lp_title() {
@@ -1487,7 +1338,7 @@ _lp_default_theme_activate() {
             LP_COLOR_MARK_NO_SUDO="$LP_COLOR_MARK"
         fi
     else # root!
-        if (( ! LP_ENABLE_VCS_ROOT )); then
+        if (( ! LP_ENABLE_GIT_ROOT )); then
             LP_MARK_DISABLED="$LP_MARK_DEFAULT"
         fi
     fi
@@ -1527,7 +1378,7 @@ _lp_default_theme_directory() {
     fi
 
     local lp_path_format
-    _lp_path_format "$LP_COLOR_PATH" "$LP_COLOR_PATH_LAST_DIR" "$LP_COLOR_PATH_VCS_ROOT" "$LP_COLOR_PATH_SHORTENED" "/" "$LP_COLOR_PATH_SEPARATOR"
+    _lp_path_format "$LP_COLOR_PATH" "$LP_COLOR_PATH_LAST_DIR" "$LP_COLOR_PATH_GIT_ROOT" "$LP_COLOR_PATH_SHORTENED" "/" "$LP_COLOR_PATH_SEPARATOR"
 
     LP_PWD="${lp_path_format}${NO_COL}"
 }
@@ -1564,27 +1415,22 @@ _lp_default_theme_prompt_data() {
         LP_PROXY=
     fi
 
+    if _lp_shell_level_color; then
+        LP_SHLVL="$lp_shell_level_color"
+    else
+        LP_SHLVL=
+    fi
+
     if _lp_error_color; then
         LP_ERR=" $lp_error_color"
     else
         LP_ERR=
     fi
 
-    if _lp_find_vcs; then
-        if [[ "$LP_ENABLE_OHMYGIT,$lp_vcs_type" = 1,git* ]]; then
-            local omg_prompt
-            if omg_prompt="$(_omg_build_prompt)"; then
-                LP_VCS=" $omg_prompt"
-            else
-                LP_VCS=
-            fi
-        elif _lp_vcs_details_color; then
-            LP_VCS=" $lp_vcs_details_color"
-        else
-            LP_VCS=
-        fi
+    if _lp_find_git && _lp_git_details_color; then
+        LP_GIT=" $lp_git_details_color"
     else
-        LP_VCS=
+        LP_GIT=
     fi
 
     _lp_smart_mark
@@ -1597,23 +1443,23 @@ _lp_default_theme_prompt_template() {
     fi
 
     if [[ -z "${LP_PS1-}" ]]; then
-        # add time and jobs
+        # Add title escape time and jobs.
         PS1="${LP_PS1_PREFIX}${LP_TIME}${LP_JOBS}"
-        # add user, host and permissions colon
+        # Add multiplexer brackets, user, host and permissions colon.
         PS1+="${LP_BRACKET_OPEN}${LP_USER}${LP_HOST}${LP_PERM}"
-        # add working directory, dirstack and proxy
-        PS1+="${LP_PWD}${LP_DIRSTACK}${LP_BRACKET_CLOSE}${LP_PROXY}"
+        # Add working directory, dirstack, proxy and nested shell level.
+        PS1+="${LP_PWD}${LP_DIRSTACK}${LP_BRACKET_CLOSE}${LP_PROXY}${LP_SHLVL}"
 
-        # Add VCS infos
-        # If root, the info has not been collected unless LP_ENABLE_VCS_ROOT
+        # Add Git info
+        # If root, the info has not been collected unless LP_ENABLE_GIT_ROOT
         # is set.
-        PS1+="${LP_VCS}"
+        PS1+="${LP_GIT}"
 
-        # add return code and prompt mark
+        # Add return code, prompt mark and user-defined postfix.
         PS1+="${LP_ERR}${LP_MARK_PREFIX}${LP_COLOR_MARK}${LP_MARK}${LP_PS1_POSTFIX}"
 
         # Get the core sections without prompt escapes and make them into a title.
-        _lp_formatted_title "${LP_PS1_PREFIX}${LP_BRACKET_OPEN}${LP_USER}${LP_HOST}${LP_PERM}${LP_PWD}${LP_BRACKET_CLOSE} ${LP_MARK}${LP_PS1_POSTFIX}"
+        _lp_formatted_title "${LP_PS1_PREFIX}${LP_BRACKET_OPEN}${LP_USER}${LP_HOST}${LP_MARK_PERM}${LP_PWD}${LP_BRACKET_CLOSE} ${LP_MARK}${LP_PS1_POSTFIX}"
     else
         PS1=$LP_PS1
     fi
@@ -1633,13 +1479,15 @@ __lp_set_prompt() {
     # As this get the last returned code, it should be called first
     local -i lp_error="$?"
 
+    if (( LP_HIDE_EMPTY_ERROR )); then
+        (( ! ${_LP_REAL_COMMAND:-1} )) && lp_error=0
+        _LP_REAL_COMMAND=0
+    fi
+
     # bash: execute the old prompt hook
     if [[ -n ${LP_OLD_PROMPT_COMMAND-} ]]; then
         eval "$LP_OLD_PROMPT_COMMAND"
     fi
-
-    # Localize cache data variables
-    local _lp_git_diff_shortstat_uncommitted _lp_git_diff_shortstat_unstaged _lp_git_diff_shortstat_staged
 
     # if change of working directory
     if [[ "${LP_OLD_PWD-}" != "LP:$PWD" ]]; then
@@ -1648,7 +1496,7 @@ __lp_set_prompt() {
         # Prefix with 'LP:' to prevent Zsh with AUTO_NAME_DIRS enabled using
         # this var as a name for the working directory, that will be used by
         # the '%' and related prompt sequences.
-        # See https://github.com/nojhan/liquidprompt/issues/124 for details.
+        # See https://github.com/liquidprompt/liquidprompt/issues/124 for details.
         LP_OLD_PWD="LP:$PWD"
     fi
 
@@ -1656,6 +1504,40 @@ __lp_set_prompt() {
 
     if (( LP_ENABLE_TITLE )); then
         PS1="${_LP_OPEN_ESC}${LP_TITLE_OPEN}${_lp_manual_title:-${_lp_generated_title-${SHELL-}}}${LP_TITLE_CLOSE}${_LP_CLOSE_ESC}${PS1}"
+    fi
+}
+
+__lp_preexec() {
+    if (( LP_HIDE_EMPTY_ERROR )); then
+        _LP_REAL_COMMAND=1
+    fi
+}
+
+__lp_before_command() {
+    # If this is the last thing before prompt is being drawn, the command is done,
+    # so mark the next trap. Note these two events could be at the same
+    # time, so no elif is used.
+    local first_command last_command
+    first_command=$PROMPT_COMMAND
+    if (( ${BASH_VERSINFO[0]:-0} > 5 || ( ${BASH_VERSINFO[0]:-0} == 5 && ${BASH_VERSINFO[1]:-0} >= 1 ) )); then
+        last_command=${PROMPT_COMMAND[-1]}
+    else
+        last_command=$PROMPT_COMMAND
+    fi
+
+    if [[ "$last_command" == *"$BASH_COMMAND" ]]; then
+        _LP_AT_PROMPT=1
+        # Return early, because the PROMPT_COMMAND should never trigger preexec hooks.
+        return
+    fi
+
+    # If this is the first time after the user submitted the command,
+    # execute the hooks, unless the user submitted an empty command.
+    if (( _LP_AT_PROMPT )); then
+        _LP_AT_PROMPT=0
+        if [[ "$first_command" != "$BASH_COMMAND"* ]]; then
+            __lp_preexec
+        fi
     fi
 }
 
@@ -1676,6 +1558,7 @@ prompt_on() {
     if [[ -z "${LP_OLD_PS1-}" ]]; then
         LP_OLD_PS1="$PS1"
     fi
+
     if (( _LP_SHELL_bash )); then
         # Prevent some cases where the user shoots in his own foot.
         # PROMPT_COMMAND is not exported by default, but some users
@@ -1691,20 +1574,24 @@ prompt_on() {
 
         if (( ${BASH_VERSINFO[0]:-0} > 5 || ( ${BASH_VERSINFO[0]:-0} == 5 && ${BASH_VERSINFO[1]:-0} >= 1 ) )); then
             # PROMPT_COMMAND is an array since bash 5.1
-            PROMPT_COMMAND+=( "$set_prompt_command" )
+            if ! ( __lp_array_contains __lp_set_prompt ${PROMPT_COMMAND[@]+"${PROMPT_COMMAND[@]}"} ); then
+               PROMPT_COMMAND+=( "$set_prompt_command" )
+            fi
         else
             if [[ -z ${LP_OLD_PROMPT_COMMAND+x} ]]; then
                 LP_OLD_PROMPT_COMMAND="${PROMPT_COMMAND-}"
             fi
             PROMPT_COMMAND="$set_prompt_command"
         fi
-    else # zsh
-        if [[ -n "${prompt_theme-}" && "$prompt_theme" != off ]]; then
-            _LP_ZSH_PROMPT_THEME="$prompt_theme"
-            # Disable the prompt to disable its precmd hook
-            prompt off
-        fi
 
+        if (( ${_LP_ENABLE_PREEXEC-0} )); then
+            _LP_AT_PROMPT=0
+            # __lp_before_command gets called just before bash executes a command,
+            # including $PROMPT_COMMAND
+            # Pass $_ to this call, because it sets $_ to what it already was
+            trap '__lp_before_command "$_"' DEBUG
+        fi
+    else # zsh
         if [[ -z ${_LP_OLD_SETOPT-} ]]; then
             # Dump option names: echo ${(ko)options}
             if [[ "${options[promptpercent]}" == on ]]; then
@@ -1718,31 +1605,42 @@ prompt_on() {
         setopt promptpercent
 
         add-zsh-hook precmd __lp_set_prompt
+
+        if (( ${_LP_ENABLE_PREEXEC-0} )); then
+            add-zsh-hook preexec __lp_preexec
+        fi
     fi
 }
 
+# Disable previous hooks as options that set them may have changed
 __lp_disable_hooks() {
     if (( _LP_SHELL_bash )); then
         if (( ${BASH_VERSINFO[0]:-0} > 5 || ( ${BASH_VERSINFO[0]:-0} == 5 && ${BASH_VERSINFO[1]:-0} >= 1 ) )); then
             # PROMPT_COMMAND is an array since bash 5.1
             for i in ${PROMPT_COMMAND[@]+"${!PROMPT_COMMAND[@]}"}; do
                 local value="${PROMPT_COMMAND[i]}"
-                if [[ $value == "__lp_set_prompt" || $value == "time __lp_set_prompt" ]]; then
+                if [[ $value == "__lp_set_prompt" ]]; then
                     unset 'PROMPT_COMMAND[i]'
                 fi
             done
         else
             if [[ -n ${LP_OLD_PROMPT_COMMAND+x} ]]; then
-                # shellcheck disable=SC2178
                 PROMPT_COMMAND="${LP_OLD_PROMPT_COMMAND-}"
                 unset LP_OLD_PROMPT_COMMAND
+            else
+                unset PROMPT_COMMAND
             fi
         fi
+
+        # Disable the DEBUG trap used by the HIDE_EMPTY_ERROR feature
+        # TODO: Fix this: Bash will unset the function's DEBUG trap, not the global one.
+        if (( ${_LP_ENABLE_PREEXEC-0} )); then
+            trap - DEBUG
+        fi
     else # zsh
-        # Disable previous hooks as options that set them
-        # may have changed
         {
             add-zsh-hook -d precmd  __lp_set_prompt
+            add-zsh-hook -d preexec __lp_preexec
         } >/dev/null
     fi
 }
@@ -1755,11 +1653,6 @@ prompt_off() {
 
     if (( _LP_SHELL_zsh )); then
         setopt "${_LP_OLD_SETOPT}"
-
-        if [[ -n ${_LP_ZSH_PROMPT_THEME-} ]]; then
-            prompt "$_LP_ZSH_PROMPT_THEME"
-            unset _LP_ZSH_PROMPT_THEME
-        fi
     fi
 }
 
@@ -1768,6 +1661,10 @@ prompt_OFF() {
     __lp_disable_hooks
 
     PS1="❯ "
+
+    if (( _LP_SHELL_zsh )); then
+        setopt "${_LP_OLD_SETOPT}"
+    fi
 }
 
 # By default, sourcing 'liquidprompt' will activate Liquid Prompt
@@ -1775,4 +1672,4 @@ if [ "${1-}" != "--no-activate" ]; then
     lp_activate
 fi
 
-# vim: set et sts=4 sw=4 tw=120 ft=sh:
+# vim: set ft=sh et sts=4 sw=4 tw=120:
