@@ -1251,8 +1251,8 @@ _lp_git_branch() {
     lp_git_branch=""
     lp_git_remote=""
     lp_git_commit_id=""
-    lp_git_commit_ahead=""
-    lp_git_commit_behind=""
+    lp_git_commit_ahead=0
+    lp_git_commit_behind=0
     lp_git_pull_type="merge"
 
     local branch remote pull_rebase counts ret
@@ -1264,16 +1264,16 @@ _lp_git_branch() {
         if remote="$(\git rev-parse --symbolic-full-name --abbrev-ref @{upstream} 2>/dev/null)"; then
             __lp_escape "${remote//\/$branch/}"
             lp_git_remote="$ret"
-        fi
 
-        pull_rebase=$(\git config --get branch.${branch}.rebase 2>/dev/null)
-        [[ -z "$pull_rebase" ]] && pull_rebase=$(\git config --get pull.rebase 2>/dev/null)
-        if [[ -n "$pull_rebase" && "$pull_rebase" != "false" ]]; then
-            lp_git_pull_type="rebase"
-        fi
+            pull_rebase=$(\git config --get branch.${branch}.rebase 2>/dev/null)
+            [[ -z "$pull_rebase" ]] && pull_rebase=$(\git config --get pull.rebase 2>/dev/null)
+            if [[ -n "$pull_rebase" && "$pull_rebase" != "false" ]]; then
+                lp_git_pull_type="rebase"
+            fi
 
-        counts="$(\git rev-list --count --left-right 'HEAD...@{upstream}' 2>/dev/null)" || return 2
-        IFS=$' \t' read -r lp_git_commit_ahead lp_git_commit_behind <<<"$counts"
+            counts="$(\git rev-list --count --left-right 'HEAD...@{upstream}' 2>/dev/null)"
+            IFS=$' \t' read -r lp_git_commit_ahead lp_git_commit_behind <<<"$counts"
+        fi
     else
         lp_git_commit_id="$(\git rev-parse --short -q HEAD 2>/dev/null)"
 
