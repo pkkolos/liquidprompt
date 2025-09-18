@@ -35,7 +35,7 @@ jobs:
     env:
       SHELL: ${{ startsWith(matrix.shell, 'bash') && 'bash' || 'zsh' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 1
       - name: Install Alpine packages
@@ -47,5 +47,14 @@ jobs:
         if: env.SHELL == 'zsh'
         run: |
           set -x
+
+          # Fix old image versions still pointing at non-archive repo URL.
+          # Can be removed once the Zsh images are updated.
+          # https://github.com/zsh-users/zsh-docker/issues/34#issuecomment-3308907133
+          . /etc/os-release
+          if [ "${VERSION_ID-}" = "10" ]; then
+            printf 'deb http://archive.debian.org/debian buster main\ndeb http://archive.debian.org/debian buster-updates main\n' > /etc/apt/sources.list
+          fi
+
           install_packages ncurses-bin ca-certificates curl git
       - run: ./tests.sh ${{ env.SHELL }}
