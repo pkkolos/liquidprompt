@@ -17,6 +17,7 @@ function test_git {
     LP_ENABLE_BZR=0
     LP_ENABLE_VCS_ROOT=1
     LP_ENABLE_VCS_REMOTE=1
+    _LP_GITSTATUS_DATA=0
 
     PS1=""
     lp_activate

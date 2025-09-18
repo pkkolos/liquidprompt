@@ -634,11 +634,13 @@ __lp_source_config() {
     LP_ENABLE_RAM=${LP_ENABLE_RAM:-1}
     LP_ENABLE_DISK=${LP_ENABLE_DISK:-0}
     LP_ENABLE_GIT=${LP_ENABLE_GIT:-1}
+    LP_ENABLE_GITSTATUSD=${LP_ENABLE_GITSTATUSD:-1}
     LP_ENABLE_SVN=${LP_ENABLE_SVN:-1}
     LP_ENABLE_FOSSIL=${LP_ENABLE_FOSSIL:-1}
     LP_ENABLE_HG=${LP_ENABLE_HG:-1}
     LP_HG_COMMAND=${LP_HG_COMMAND:-hg}
     LP_ENABLE_BZR=${LP_ENABLE_BZR:-1}
+    LP_ENABLE_VCS_LINES=${LP_ENABLE_VCS_LINES:-1}
     LP_ENABLE_VCS_REMOTE=${LP_ENABLE_VCS_REMOTE:-0}
     LP_ENABLE_TIME=${LP_ENABLE_TIME:-0}
     LP_TIME_ANALOG=${LP_TIME_ANALOG:-0}
@@ -1014,6 +1016,8 @@ lp_activate() {
     _lp_require_tool TIME date
 
     _lp_require_tool GIT git
+    _lp_require_tool GITSTATUSD git
+    _lp_require_tool GITSTATUSD gitstatus_query
     _lp_require_tool SVN svn
     _lp_require_tool FOSSIL fossil
     _lp_require_tool HG "$LP_HG_COMMAND"
@@ -2997,8 +3001,20 @@ _lp_vcs_details_color() {
         elif (( ret == 1 )); then
             has_lines="+0/-0"
         else
-            _lp_vcs_uncommitted_lines
-            has_lines="+$lp_vcs_uncommitted_i_lines/-$lp_vcs_uncommitted_d_lines"
+            # Only show lines if the VCS supports lines (and the user has it enabled), otherwise show changed files.
+            _lp_vcs_uncommitted_lines; ret=$?
+            if (( ret <= 1 )); then
+                has_lines="+$lp_vcs_uncommitted_i_lines/-$lp_vcs_uncommitted_d_lines"
+            else
+                _lp_vcs_unstaged_files; ret=$?
+                if (( ret == 0 )); then
+                    has_lines="$lp_vcs_unstaged_files"
+                elif (( ret == 1 )); then
+                    has_lines="0"
+                else
+                    has_lines="$lp_vcs_uncommitted_files"
+                fi
+            fi
         fi
         lp_vcs_details_color="$LP_COLOR_CHANGES"
     fi
@@ -3101,6 +3117,7 @@ _lp_vcs_uncommitted_files() {
 
 # Get the number of changed lines compared to the last or checked out commit.
 _lp_vcs_uncommitted_lines() {
+    (( LP_ENABLE_VCS_LINES )) || return 2
     "_lp_${lp_vcs_type}_uncommitted_lines"
 }
 
@@ -3111,6 +3128,7 @@ _lp_vcs_unstaged_files() {
 
 # Get the number of changed lines compared to staging.
 _lp_vcs_unstaged_lines() {
+    (( LP_ENABLE_VCS_LINES )) || return 2
     "_lp_${lp_vcs_type}_unstaged_lines"
 }
 
@@ -3121,6 +3139,7 @@ _lp_vcs_staged_files() {
 
 # Get the number of changed lines in staging compared to the last or checked out commit.
 _lp_vcs_staged_lines() {
+    (( LP_ENABLE_VCS_LINES )) || return 2
     "_lp_${lp_vcs_type}_staged_lines"
 }
 
@@ -3136,11 +3155,19 @@ _lp_vcs_remote() {
 # Git repository.
 _lp_git_active() {
     (( LP_ENABLE_GIT )) || return 2
+    if (( _LP_GITSTATUS_DATA )); then
+        [[ "${VCS_STATUS_RESULT-}" == "ok-sync" ]] && return || return 1
+    fi
     \git rev-parse --is-inside-work-tree >/dev/null 2>&1 || return 1
 }
 
 # Get the branch name of the Git repo in the current directory.
 _lp_git_branch() {
+    if (( _LP_GITSTATUS_DATA )); then
+        lp_vcs_branch="${VCS_STATUS_LOCAL_BRANCH-}"
+        [[ -n "$lp_vcs_branch" ]] && return || return 1
+    fi
+
     lp_vcs_branch=""
     local branch ret
     # Recent versions of Git support the --short option for symbolic-ref, but
@@ -3158,6 +3185,11 @@ _lp_git_bookmark() { return 2 ; }
 
 # Get a tag name of the Git repo in the current directory.
 _lp_git_tag() {
+    if (( _LP_GITSTATUS_DATA )); then
+        lp_vcs_tag="${VCS_STATUS_TAG-}"
+        [[ -n "$lp_vcs_tag" ]] && return || return 1
+    fi
+
     local tag ret
     if tag="$(\git describe --tags --exact-match 2>/dev/null)"; then
         __lp_escape "$tag"
@@ -3169,11 +3201,19 @@ _lp_git_tag() {
 
 # Get the current full commit hash of the repo in the current directory.
 _lp_git_commit_id() {
+    (( _LP_GITSTATUS_DATA )) && lp_vcs_commit_id="${VCS_STATUS_COMMIT-}" && return
+
     lp_vcs_commit_id="$(\git rev-parse -q HEAD 2>/dev/null)"
 }
 
 # Get additional information if HEAD is in merging, rebasing or cherry-picking state.
 _lp_git_head_status() {
+    if (( _LP_GITSTATUS_DATA )); then
+        lp_vcs_head_status="${VCS_STATUS_ACTION-}"
+        unset lp_vcs_head_details
+        [[ -n "$lp_vcs_head_status" ]] && return || return 1
+    fi
+
     local IFS="" step total
 
     if [[ -f "${lp_vcs_specific_dir}/MERGE_HEAD" ]]; then
@@ -3215,23 +3255,36 @@ _lp_git_head_status() {
 
 # Get the number of Git stashes in the repo.
 _lp_git_stash_count() {
-    lp_vcs_stash_count="$(\git rev-list --walk-reflogs --count refs/stash 2>/dev/null)"
+    if (( _LP_GITSTATUS_DATA )); then
+        lp_vcs_stash_count="${VCS_STATUS_STASHES:-0}"
+    else
+        lp_vcs_stash_count="$(\git rev-list --walk-reflogs --count refs/stash 2>/dev/null)"
+    fi
     (( lp_vcs_stash_count ))
 }
 
 # Count commits behind and ahead on the remote tracking branch of the current
 # local branch.
 _lp_git_commits_off_remote() {
-    local counts
-    # The "@{upstream}" notation was added in Git 1.7.0, so this should work for everyone
-    counts="$(\git rev-list --count --left-right '@{upstream}...HEAD' 2>/dev/null)" || return 2
-    IFS=$' \t' read -r lp_vcs_commit_behind lp_vcs_commit_ahead <<<"$counts"
+    if (( _LP_GITSTATUS_DATA )); then
+        lp_vcs_commit_ahead="${VCS_STATUS_COMMITS_AHEAD:-0}"
+        lp_vcs_commit_behind="${VCS_STATUS_COMMITS_BEHIND:-0}"
+    else
+        local counts
+        # The "@{upstream}" notation was added in Git 1.7.0, so this should work for everyone
+        counts="$(\git rev-list --count --left-right '@{upstream}...HEAD' 2>/dev/null)" || return 2
+        IFS=$' \t' read -r lp_vcs_commit_behind lp_vcs_commit_ahead <<<"$counts"
+    fi
     (( lp_vcs_commit_behind || lp_vcs_commit_ahead ))
 }
 
 # Get the number of untracked files in the repo.
 _lp_git_untracked_files() {
-    lp_vcs_untracked_files="$(LC_ALL=C \git status --porcelain 2>/dev/null | GREP_OPTIONS='' \grep -c '^??')"
+    if (( _LP_GITSTATUS_DATA )); then
+        lp_vcs_untracked_files="${VCS_STATUS_NUM_UNTRACKED:-0}"
+    else
+        lp_vcs_untracked_files="$(LC_ALL=C \git status --porcelain 2>/dev/null | GREP_OPTIONS='' \grep -c '^??')"
+    fi
     (( lp_vcs_untracked_files ))
 }
 
@@ -3277,6 +3330,11 @@ __lp_git_diff_shortstat_uncommitted() {
 
 # Get the number of changed files compared to HEAD.
 _lp_git_uncommitted_files() {
+    if (( _LP_GITSTATUS_DATA )); then
+        lp_vcs_uncommitted_files="$(( ${VCS_STATUS_NUM_STAGED:-0} + ${VCS_STATUS_NUM_UNSTAGED:-0} ))"
+        (( lp_vcs_uncommitted_files )) && return || return 1
+    fi
+
     __lp_git_diff_shortstat_uncommitted
 
     local lp_git_diff_shortstat_files
@@ -3304,6 +3362,11 @@ __lp_git_diff_shortstat_unstaged() {
 
 # Get the number of changed files compared to staging.
 _lp_git_unstaged_files() {
+    if (( _LP_GITSTATUS_DATA )); then
+        lp_vcs_unstaged_files="${VCS_STATUS_NUM_UNSTAGED:-0}"
+        (( lp_vcs_unstaged_files )) && return || return 1
+    fi
+
     __lp_git_diff_shortstat_unstaged
 
     local lp_git_diff_shortstat_files
@@ -3332,6 +3395,11 @@ __lp_git_diff_shortstat_staged() {
 
 # Get the number of changed files in staging compared to HEAD.
 _lp_git_staged_files() {
+    if (( _LP_GITSTATUS_DATA )); then
+        lp_vcs_staged_files="${VCS_STATUS_NUM_STAGED:-0}"
+        (( lp_vcs_staged_files )) && return || return 1
+    fi
+
     __lp_git_diff_shortstat_staged
 
     local lp_git_diff_shortstat_files
@@ -3357,6 +3425,11 @@ _lp_git_staged_lines() {
 # NOTE: Assumes that `_lp_find_vcs` and `_lp_vcs_branch` (costly functions) have been called.
 _lp_git_remote() {
     lp_vcs_remote=""
+
+    if (( _LP_GITSTATUS_DATA )); then
+        lp_vcs_remote="${VCS_STATUS_REMOTE_NAME-}"
+        [[ -n "$lp_vcs_remote" ]] && return || return 1
+    fi
 
     if [[ -z "$lp_vcs_branch" ]]; then
         # There is no remote.
@@ -5103,6 +5176,15 @@ __lp_set_prompt() {
 
     # Localize cache data variables
     local _lp_git_diff_shortstat_uncommitted _lp_git_diff_shortstat_unstaged _lp_git_diff_shortstat_staged
+
+    _LP_GITSTATUS_DATA=0
+    if (( LP_ENABLE_GITSTATUSD )); then
+        if (( _LP_SHELL_zsh )); then
+            gitstatus_query liquidprompt && _LP_GITSTATUS_DATA=1
+        else
+            gitstatus_query && _LP_GITSTATUS_DATA=1
+        fi
+    fi
 
     # if change of working directory
     if [[ "${LP_OLD_PWD-}" != "LP:$PWD" ]]; then

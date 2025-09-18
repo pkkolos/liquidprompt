@@ -586,7 +586,36 @@ Features
 
    Will be disabled if ``git`` is not found.
 
-   See also: :attr:`LP_MARK_GIT`.
+   See also: :attr:`LP_ENABLE_GITSTATUSD` and :attr:`LP_MARK_GIT`.
+
+.. attribute:: LP_ENABLE_GITSTATUSD
+   :type: bool
+   :value: 1
+
+   Use `gitstatus <https://github.com/romkatv/gitstatus>`_ to fetch Git
+   repository information. Can potentially be much faster than the built in
+   data generation method.
+
+   ``gitstatus`` must be installed, and the ``gitstatus.plugin.sh`` (Bash) or
+   ``gitstatus.plugin.zsh`` (Zsh) file sourced and ``gitstatus_start`` ran
+   before loading Liquidprompt. If running in Zsh, ``gitstatus_start`` requires
+   an argument as a name, which must be ``liquidprompt``, like
+   ``gitstatus_start liquidprompt``.
+
+   ``gitstatus`` by default will only show a limited number of changes. If you
+   want to see more, `set options`_ when calling ``gitstatus_start``.
+
+   .. _`set options`: https://github.com/romkatv/gitstatus/blob/master/gitstatus.plugin.sh
+
+   Will be disabled if ``git`` or ``gitstatus_query`` are not found.
+
+   Note that ``gitstatus`` does not support changed line information, so if
+   :attr:`LP_ENABLE_VCS_LINES` is left enabled, the performance benefit will be
+   lessened.
+
+   See also: :attr:`LP_ENABLE_GIT`.
+
+   .. versionadded:: 2.3
 
 .. attribute:: LP_ENABLE_HG
    :type: bool
@@ -1083,6 +1112,20 @@ Features
    have any effect.
 
    .. versionadded:: 2.2
+
+.. attribute:: LP_ENABLE_VCS_LINES
+   :type: bool
+   :value: 1
+
+   Enable the display of changed lines in VCS repositories. Disabling this can
+   be a huge performance improvement.
+
+   In the default theme, changed lines that have not been staged (if the VCS
+   supports staging, otherwise changes not yet committed) will be displayed,
+   with a ``+`` for added lines and a ``-`` for removed lines. If disabled,
+   will show number of changed files instead.
+
+   .. versionadded:: 2.3
 
 .. attribute:: LP_ENABLE_VCS_REMOTE
    :type: bool

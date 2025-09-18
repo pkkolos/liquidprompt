@@ -180,6 +180,8 @@ this.
 
    Many VCS providers do not support staging.
 
+   Can be disabled by :attr:`LP_ENABLE_VCS_LINES`.
+
    .. versionadded:: 2.0
 
 .. function:: _lp_vcs_stash_count() -> var:lp_vcs_stash_count
@@ -227,6 +229,8 @@ this.
    Some VCS providers refer to uncommitted lines as "modified" or "changed"
    lines.
 
+   Can be disabled by :attr:`LP_ENABLE_VCS_LINES`.
+
    .. versionadded:: 2.0
 
 .. function:: _lp_vcs_unstaged_files() -> var:lp_vcs_unstaged_files
@@ -246,6 +250,8 @@ this.
    unstaged lines.
 
    Many VCS providers do not support staging.
+
+   Can be disabled by :attr:`LP_ENABLE_VCS_LINES`.
 
    .. versionadded:: 2.0
 
