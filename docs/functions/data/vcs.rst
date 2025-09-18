@@ -211,8 +211,8 @@ this.
 .. function:: _lp_vcs_uncommitted_files() -> var:lp_vcs_uncommitted_files
 
    Returns ``true`` if any uncommitted files exist in the repository. In other
-   words, tracked files that contain uncommitted changes. Returns the number of
-   uncommitted files.
+   words, tracked files that contain uncommitted changes, regardless of if
+   those changes are staged. Returns the number of uncommitted files.
 
    Some VCS providers refer to uncommitted files as "modified" files.
 
@@ -221,8 +221,8 @@ this.
 .. function:: _lp_vcs_uncommitted_lines() -> var:lp_vcs_uncommitted_i_lines, var:lp_vcs_uncommitted_d_lines
 
    Returns ``true`` if any uncommitted lines exist in the repository. In other
-   words, tracked files that contain uncommitted changes. Returns the number of
-   uncommitted lines.
+   words, tracked files that contain uncommitted changes, regardless of if
+   those changes are staged. Returns the number of uncommitted lines.
 
    Some VCS providers refer to uncommitted lines as "modified" or "changed"
    lines.
@@ -489,6 +489,15 @@ Git
 
    .. versionadded:: 2.0
 
+.. function:: _lp_git_remote() -> var:lp_vcs_remote
+
+   Return ``true`` if the current branch is a remote tracking branch. The
+   remote name is returned in *lp_vcs_remote*.
+
+   Can be enabled by :attr:`LP_ENABLE_VCS_REMOTE`.
+
+   .. versionadded:: 2.2
+
 .. function:: _lp_git_staged_files() -> var:lp_vcs_staged_files
 
    Returns ``true`` if any staged files exist in the repository. In other words,
@@ -525,16 +534,16 @@ Git
 .. function:: _lp_git_uncommitted_files() -> var:lp_vcs_uncommitted_files
 
    Returns ``true`` if any uncommitted files exist in the repository. In other
-   words, tracked files that contain uncommitted changes. Returns the number of
-   uncommitted files.
+   words, tracked files that contain uncommitted changes, regardless of if
+   those changes are staged. Returns the number of uncommitted files.
 
    .. versionadded:: 2.0
 
 .. function:: _lp_git_uncommitted_lines() -> var:lp_vcs_uncommitted_i_lines, var:lp_vcs_uncommitted_d_lines
 
    Returns ``true`` if any uncommitted lines exist in the repository. In other
-   words, tracked files that contain uncommitted changes. Returns the number of
-   uncommitted lines.
+   words, tracked files that contain uncommitted changes, regardless of if
+   those changes are staged. Returns the number of uncommitted lines.
 
    .. versionadded:: 2.0
 
