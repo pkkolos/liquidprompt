@@ -1534,11 +1534,11 @@ _lp_fill() {
     # Remove any escaped character from fillchars,
     # to avoid any costly __lp_strip_escape call on a potentially long
     # sequence of characters.
+    local ret
     __lp_strip_escapes "$fillchars"
     fillchars="$ret"
 
     # Compute the gap between left and right.
-    local ret
     __lp_strip_escapes "${left}"
     local left_as_text="$ret"
     __lp_strip_escapes "${right}"
