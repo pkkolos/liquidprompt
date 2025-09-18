@@ -70,14 +70,23 @@ html_css_files = [
      'liquid.css',
 ]
 
-# linkchecker dislikes anchor tags in github links: https://github.com/sphinx-doc/sphinx/issues/9016
-# breezy-vcs.org has been having intermittent dns problems ("Temporary failure in name # resolution") for a while now
-linkcheck_ignore = [
-        r'^https://github.com/rcaloras/bash-preexec/blob/master/README.md#install$',
-        r'^https://www.breezy-vcs.org/$',
-        r'^https://spaceship-prompt.sh/$',
-        r'^https://dn-works.com/',
+linkcheck_anchors_ignore_for_url = [
+    # linkchecker dislikes anchor tags in github links: https://github.com/sphinx-doc/sphinx/issues/9016
+    r'^https://github.com/',
 ]
+linkcheck_ignore = [
+    # breezy-vcs.org has been having intermittent dns problems ("Temporary failure in name # resolution") for a while now
+    r'^https://www.breezy-vcs.org/',
+    r'^https://spaceship-prompt.sh/',
+    r'^https://dn-works.com/',
+
+    # Seems to block non-browser user agents.
+    r'^https://developers.redhat.com/',
+
+    # Always rate limited.
+    r'^https://developer.hashicorp.com/',
+]
+linkcheck_retries = 3
 
 nitpick_ignore_regex = [
     # Environment variables are defined by external programs, so we do not

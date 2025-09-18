@@ -43,13 +43,9 @@ Debian
    :alt: Debian Unstable package
    :target: https://packages.debian.org/source/liquidprompt
 
-.. image:: https://repology.org/badge/version-for-repo/ubuntu_22_04/liquidprompt.svg
-   :alt: Ubuntu 22.04 package
+.. image:: https://repology.org/badge/version-for-repo/ubuntu_24_04/liquidprompt.svg
+   :alt: Ubuntu 24.04 package
    :target: https://packages.ubuntu.com/source/liquidprompt
-
-.. image:: https://repology.org/badge/version-for-repo/mx_19_testing/liquidprompt.svg
-   :alt: MX Linux MX-19 Testing package
-   :target: http://mxrepo.com/mx/testrepo/pool/test/l/liquidprompt/
 
 .. code-block::
 

@@ -35,7 +35,7 @@ gzip format directly from the `release page
 Installation via Antigen
 ------------------------
 
-To install via `Antigen <https://antigen.sharats.me/>`_, simply add the
+To install via `Antigen <https://github.com/zsh-users/antigen>`_, simply add the
 following line in your ``.zshrc`` after activating Antigen::
 
    antigen bundle liquidprompt/liquidprompt
