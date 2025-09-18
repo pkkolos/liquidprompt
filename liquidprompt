@@ -874,20 +874,19 @@ __lp_source_config() {
         done
     fi
 
-    # FIXME Delete this code in version 1.11
     if [[ -n "${LP_COLORMAP_1-}" ]]; then
         echo "liquidprompt: LP_COLORMAP_x variables are deprecated. Update your theme to use LP_COLORMAP array." >&2
         LP_COLORMAP=(
-            "$LP_COLORMAP_0"
-            "$LP_COLORMAP_1"
-            "$LP_COLORMAP_2"
-            "$LP_COLORMAP_3"
-            "$LP_COLORMAP_4"
-            "$LP_COLORMAP_5"
-            "$LP_COLORMAP_6"
-            "$LP_COLORMAP_7"
-            "$LP_COLORMAP_8"
-            "$LP_COLORMAP_9"
+            "${LP_COLORMAP_0-}"
+            "${LP_COLORMAP_1-}"
+            "${LP_COLORMAP_2-}"
+            "${LP_COLORMAP_3-}"
+            "${LP_COLORMAP_4-}"
+            "${LP_COLORMAP_5-}"
+            "${LP_COLORMAP_6-}"
+            "${LP_COLORMAP_7-}"
+            "${LP_COLORMAP_8-}"
+            "${LP_COLORMAP_9-}"
         )
         unset LP_COLORMAP_0 LP_COLORMAP_1 LP_COLORMAP_2 LP_COLORMAP_3 LP_COLORMAP_4 \
               LP_COLORMAP_5 LP_COLORMAP_6 LP_COLORMAP_7 LP_COLORMAP_8 LP_COLORMAP_9
