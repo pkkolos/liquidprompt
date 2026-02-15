@@ -394,12 +394,20 @@ __lp_line_count() {
 }
 
 # Return $PWD with $HOME at the start replaced by "~".
-__lp_pwd_tilde() {  # [path]
-    # Needs to be in a variable, as different versions of Bash treat '~' in a
-    # substitution differently
-    local _path="${1:-$PWD}" tilde="~"
-    lp_pwd_tilde="${_path/#$HOME/$tilde}"
-}
+if (( _LP_SHELL_zsh )); then
+    # Zsh-specific version, use zsh print -D builtin function which support named directories
+    __lp_pwd_tilde() {
+        print -v lp_pwd_tilde -n -r -D "${1:-$PWD}"
+    }
+else
+    # Bash version
+    __lp_pwd_tilde() {
+        # Needs to be in a variable, as different versions of Bash treat '~' in a
+        # substitution differently
+        local _path="${1:-$PWD}" tilde="~"
+        lp_pwd_tilde="${_path/#$HOME/$tilde}"
+    }
+fi
 
 # Generates a terminal escape sequence to format the terminal.
 lp_terminal_format() {  # fg, bg, bold, underline, fallback_fg, fallback_bg
