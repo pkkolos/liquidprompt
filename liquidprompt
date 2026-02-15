@@ -46,12 +46,6 @@ if test -n "${BASH_VERSION-}"; then
         while [[ "$ret" == *"$_LP_OPEN_ESC"* ]]; do
             ret="${ret%%"$_LP_OPEN_ESC"*}${ret#*"$_LP_CLOSE_ESC"}"
         done
-
-        ret="${ret//\\\\/\\}"
-        if shopt -q promptvars ; then
-            ret="${ret//\\\$/\$}"
-            ret="${ret//\\\`/\`}"
-        fi
     }
 elif test -n "${ZSH_VERSION-}"; then
     _LP_SHELL_bash=0
@@ -75,15 +69,6 @@ elif test -n "${ZSH_VERSION-}"; then
 
     __lp_strip_escapes() {
         ret="${(S)1//"${_LP_OPEN_ESC}"*"${_LP_CLOSE_ESC}"}"
-        ret="${ret//\\\\/\\}"
-        ret="${ret//\%\%/%}"
-        if [[ -o promptbang ]]; then
-            ret="${ret//!!/!}"
-        fi
-        if [[ -o promptsubst ]]; then
-            ret="${ret//\\\$/\$}"
-            ret="${ret//\\\`/\`}"
-        fi
     }
 else
     echo "liquidprompt: shell not supported" >&2
@@ -1410,7 +1395,7 @@ _lp_default_theme_prompt_data() {
     fi
 
     _lp_smart_mark
-    LP_MARK="${lp_smart_mark}${NO_COL} "
+    LP_MARK="${lp_smart_mark}${NO_COL}"
 }
 
 _lp_default_theme_prompt_template() {
@@ -1432,7 +1417,7 @@ _lp_default_theme_prompt_template() {
         PS1+="${LP_GIT}"
 
         # Add return code, prompt mark and user-defined postfix.
-        PS1+="${LP_ERR}${LP_MARK_PREFIX}${LP_COLOR_MARK}${LP_MARK}${LP_PS1_POSTFIX}"
+        PS1+="${LP_ERR}${LP_MARK_PREFIX}${LP_COLOR_MARK}${LP_MARK} ${LP_PS1_POSTFIX}"
 
         # Get the core sections without prompt escapes and make them into a title.
         _lp_formatted_title "${LP_PS1_PREFIX}${LP_BRACKET_OPEN}${LP_USER}${LP_HOST}${LP_MARK_PERM}${LP_PWD}${LP_BRACKET_CLOSE} ${LP_MARK}${LP_PS1_POSTFIX}"
