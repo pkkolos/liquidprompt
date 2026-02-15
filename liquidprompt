@@ -522,7 +522,7 @@ _lp_path_format() {
 
     local -i path_length="${#display_path}"
 
-    local lp_git_root lp_git_dir lp_git_type lp_git_subtype
+    local lp_git_root lp_git_dir lp_git_type
     local git_root_directory=
     if (( LP_PATH_GIT_ROOT )) && _lp_find_git; then
         __lp_pwd_tilde "$lp_git_root"
@@ -1408,7 +1408,7 @@ _lp_default_theme_prompt_template() {
         PS1="${LP_PS1_PREFIX}${LP_TIME}${LP_JOBS}"
         # Add multiplexer brackets, user, host and permissions colon.
         PS1+="${LP_BRACKET_OPEN}${LP_USER}${LP_HOST}${LP_PERM}"
-        # Add working directory, dirstack, proxy and nested shell level.
+        # Add working directory, dirstack and proxy.
         PS1+="${LP_PWD}${LP_DIRSTACK}${LP_BRACKET_CLOSE}${LP_PROXY}"
 
         # Add Git info
