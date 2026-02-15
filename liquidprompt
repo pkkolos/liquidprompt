@@ -1478,12 +1478,14 @@ __lp_before_command() {
     # If this is the last thing before prompt is being drawn, the command is done,
     # so mark the next trap. Note these two events could be at the same
     # time, so no elif is used.
+    # It is possible for PROMPT_COMMAND to be unset, as we could be in the middle
+    # of replacing it in lp_activate().
     local first_command last_command
-    first_command=$PROMPT_COMMAND
-    if (( ${BASH_VERSINFO[0]:-0} > 5 || ( ${BASH_VERSINFO[0]:-0} == 5 && ${BASH_VERSINFO[1]:-0} >= 1 ) )); then
+    first_command=${PROMPT_COMMAND-}
+    if [[ -n "${PROMPT_COMMAND[*]+x}" ]]; then
         last_command=${PROMPT_COMMAND[-1]}
     else
-        last_command=$PROMPT_COMMAND
+        last_command=${PROMPT_COMMAND-}
     fi
 
     if [[ "$last_command" == *"$BASH_COMMAND" ]]; then
@@ -1526,23 +1528,12 @@ prompt_on() {
         # incorrectly export it from their profile/bashrc (GitHub #450),
         # so we preventively UNexport it.
         # TODO: warn the user if it was exported
-        if (( ${BASH_VERSINFO[0]:-0} > 4 || ( ${BASH_VERSINFO[0]:-0} == 4 && ${BASH_VERSINFO[1]:-0} >= 2 ) )); then
-            # -g is only available since bash 4.2
-            declare -g +x PROMPT_COMMAND
-        fi
+        declare -g +x PROMPT_COMMAND
 
         local set_prompt_command=__lp_set_prompt
 
-        if (( ${BASH_VERSINFO[0]:-0} > 5 || ( ${BASH_VERSINFO[0]:-0} == 5 && ${BASH_VERSINFO[1]:-0} >= 1 ) )); then
-            # PROMPT_COMMAND is an array since bash 5.1
-            if ! ( __lp_array_contains __lp_set_prompt ${PROMPT_COMMAND[@]+"${PROMPT_COMMAND[@]}"} ); then
-               PROMPT_COMMAND+=( "$set_prompt_command" )
-            fi
-        else
-            if [[ -z ${LP_OLD_PROMPT_COMMAND+x} ]]; then
-                LP_OLD_PROMPT_COMMAND="${PROMPT_COMMAND-}"
-            fi
-            PROMPT_COMMAND="$set_prompt_command"
+        if ! ( __lp_array_contains __lp_set_prompt ${PROMPT_COMMAND[@]+"${PROMPT_COMMAND[@]}"} ); then
+            PROMPT_COMMAND+=( "$set_prompt_command" )
         fi
 
         if (( ${_LP_ENABLE_PREEXEC-0} )); then
@@ -1576,25 +1567,14 @@ prompt_on() {
 # Disable previous hooks as options that set them may have changed
 __lp_disable_hooks() {
     if (( _LP_SHELL_bash )); then
-        if (( ${BASH_VERSINFO[0]:-0} > 5 || ( ${BASH_VERSINFO[0]:-0} == 5 && ${BASH_VERSINFO[1]:-0} >= 1 ) )); then
-            # PROMPT_COMMAND is an array since bash 5.1
-            for i in ${PROMPT_COMMAND[@]+"${!PROMPT_COMMAND[@]}"}; do
-                local value="${PROMPT_COMMAND[i]}"
-                if [[ $value == "__lp_set_prompt" ]]; then
-                    unset 'PROMPT_COMMAND[i]'
-                fi
-            done
-        else
-            if [[ -n ${LP_OLD_PROMPT_COMMAND+x} ]]; then
-                PROMPT_COMMAND="${LP_OLD_PROMPT_COMMAND-}"
-                unset LP_OLD_PROMPT_COMMAND
-            else
-                unset PROMPT_COMMAND
+        for i in ${PROMPT_COMMAND[@]+"${!PROMPT_COMMAND[@]}"}; do
+            local value="${PROMPT_COMMAND[i]}"
+            if [[ $value == "__lp_set_prompt" ]]; then
+                unset 'PROMPT_COMMAND[i]'
             fi
-        fi
+        done
 
         # Disable the DEBUG trap used by the HIDE_EMPTY_ERROR feature
-        # TODO: Fix this: Bash will unset the function's DEBUG trap, not the global one.
         if (( ${_LP_ENABLE_PREEXEC-0} )); then
             trap - DEBUG
         fi
@@ -1627,6 +1607,11 @@ prompt_OFF() {
         setopt "${_LP_OLD_SETOPT}"
     fi
 }
+
+if (( _LP_SHELL_bash )); then
+    # These functions must inherit shell traps to be able to disable them.
+    declare -f -t __lp_disable_hooks lp_activate prompt_off prompt_OFF
+fi
 
 # By default, sourcing 'liquidprompt' will activate Liquid Prompt
 if [ "${1-}" != "--no-activate" ]; then
